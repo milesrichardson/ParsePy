@@ -120,8 +120,6 @@ class ParseObject(ParseBase):
 
         return (key, value)
 
-
-
     def _getJSONProperties(self):
 
         properties_list = self.__dict__.items()
