@@ -224,7 +224,7 @@ class ParseQuery(ParseBase):
         # HTTP Verb: GET
 
         if self._object_id:
-            uri = '/%s/%s' % (self._class_name, object_id)
+            uri = '/%s/%s' % (self._class_name, self._object_id)
         else:
             options = dict(self._options) # make a local copy
             if self._where:
@@ -241,8 +241,3 @@ class ParseQuery(ParseBase):
         else:
             return [ParseObject(self._class_name, result) for result in response_dict['results']]
                 
-
-
-
-
-
