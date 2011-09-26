@@ -51,19 +51,6 @@ class ParseObject(ParseBase):
         if attrs_dict:
             self._populateFromDict(attrs_dict)
 
-    def _populateFromDict(self, attrs_dict):
-        self._object_id = attrs_dict['objectId']
-        self._created_at = self._ISO8601ToDatetime(attrs_dict['createdAt'])
-        self._updated_at = self._ISO8601ToDatetime(attrs_dict['updatedAt'])
-
-        del attrs_dict['objectId']
-        del attrs_dict['createdAt']
-        del attrs_dict['updatedAt']
-
-        attrs_dict = dict(map(self._convertFromParseType, attrs_dict.items()))
-
-        self.__dict__.update(attrs_dict)
-
     def objectId(self):
         return self._object_id
 
@@ -88,6 +75,19 @@ class ParseObject(ParseBase):
         self._executeCall(uri, 'DELETE')
 
         self = self.__init__(None)
+
+    def _populateFromDict(self, attrs_dict):
+        self._object_id = attrs_dict['objectId']
+        self._created_at = self._ISO8601ToDatetime(attrs_dict['createdAt'])
+        self._updated_at = self._ISO8601ToDatetime(attrs_dict['updatedAt'])
+
+        del attrs_dict['objectId']
+        del attrs_dict['createdAt']
+        del attrs_dict['updatedAt']
+
+        attrs_dict = dict(map(self._convertFromParseType, attrs_dict.items()))
+
+        self.__dict__.update(attrs_dict)
 
     def _convertToParseType(self, prop):
         key, value = prop
