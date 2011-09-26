@@ -2,6 +2,7 @@ import urllib, urllib2
 import base64
 import json
 import datetime
+import collections
 
 API_ROOT = 'https://api.parse.com/1/classes'
 
@@ -11,6 +12,7 @@ MASTER_KEY = ''
 
 class ParseBinaryDataWrapper(str):
     pass
+
 
 class ParseBase(object):
     def _executeCall(self, uri, http_verb, data=None):
@@ -39,13 +41,28 @@ class ParseBase(object):
         return date
 
 
-
 class ParseObject(ParseBase):
-    def __init__(self, class_name):
+    def __init__(self, class_name, attrs_dict=None):
         self._class_name = class_name
         self._object_id = None
         self._updated_at = None
         self._created_at = None
+
+        if attrs_dict:
+            self._populateFromDict(attrs_dict)
+
+    def _populateFromDict(self, attrs_dict):
+        self._object_id = attrs_dict['objectId']
+        self._created_at = self._ISO8601ToDatetime(attrs_dict['createdAt'])
+        self._updated_at = self._ISO8601ToDatetime(attrs_dict['updatedAt'])
+
+        del attrs_dict['objectId']
+        del attrs_dict['createdAt']
+        del attrs_dict['updatedAt']
+
+        attrs_dict = dict(map(self._convertFromParseType, attrs_dict.items()))
+
+        self.__dict__.update(attrs_dict)
 
     def objectId(self):
         return self._object_id
@@ -87,6 +104,23 @@ class ParseObject(ParseBase):
                     'base64': base64.b64encode(value)}
 
         return (key, value)
+
+    def _convertFromParseType(self, prop):
+        key, value = prop
+
+        if type(value) == dict and value.has_key('__type'):
+            if value['__type'] == 'Pointer':
+                value = ParseQuery(value['className']).get(value['objectId'])
+            elif value['__type'] == 'Date':
+                value = self._ISO8601ToDatetime(value['iso'])
+            elif value['__type'] == 'Bytes':
+                value = ParseBinaryDataWrapper(base64.b64decode(value['base64']))
+            else:
+                raise Exception('Invalid __type.')
+
+        return (key, value)
+
+
 
     def _getJSONProperties(self):
 
@@ -132,45 +166,83 @@ class ParseObject(ParseBase):
 
 class ParseQuery(ParseBase):
     def __init__(self, class_name):
-        self.class_name = class_name
-    
+        self._class_name = class_name
+        self._where = collections.defaultdict(dict)
+        self._options = {}
+        self._object_id = ''
+
+    def eq(self, name, value):
+        self._where[name] = value
+        return self
+
+    # It's tempting to generate the comparison functions programatically,
+    # but probably not worth the decrease in readability of the code.
+    def lt(self, name, value):
+        self._where[name]['$lt'] = value
+        return self
+        
+    def lte(self, name, value):
+        self._where[name]['$lte'] = value
+        return self
+        
+    def gt(self, name, value):
+        self._where[name]['$gt'] = value
+        return self
+        
+    def gte(self, name, value):
+        self._where[name]['$gte'] = value
+        return self
+
+    def ne(self, name, value):
+        self._where[name]['$ne'] = value
+        return self
+
+    def order(self, order, decending=False):
+        # add a minus sign before the order value if decending == True
+        self._options['order'] = decending and ('-' + order) or order
+        return self
+
+    def limit(self, limit):
+        self._options['limit'] = limit
+        return self
+
+    def skip(self, skip):
+        self._options['skip'] = skip
+        return self
+
     def get(self, object_id):
+        self._object_id = object_id
+        return self._fetch(single_result=True)
+
+    def fetch(self):
+        # hide the single_result param of the _fetch method from the library user
+        # since it's only useful internally
+        return self._fetch() 
+
+    def _fetch(self, single_result=False):
         # URL: /1/classes/<className>/<objectId>
         # HTTP Verb: GET
 
-        uri = '/%s/%s' % (self.class_name, object_id)
+        if self._object_id:
+            uri = '/%s/%s' % (self._class_name, object_id)
+        else:
+            options = dict(self._options) # make a local copy
+            if self._where:
+                # JSON encode WHERE values
+                where = json.dumps(self._where)
+                options.update({'where': where})
+
+            uri = '/%s?%s' % (self._class_name, urllib.urlencode(options))
 
         response_dict = self._executeCall(uri, 'GET')
 
-        new_parse_obj = ParseObject(self.class_name)
-        new_parse_obj._object_id = response_dict['objectId']
-        new_parse_obj._created_at = self._ISO8601ToDatetime(response_dict['createdAt'])
-        new_parse_obj._updated_at = self._ISO8601ToDatetime(response_dict['updatedAt'])
+        if single_result:
+            return ParseObject(self._class_name, response_dict)
+        else:
+            return [ParseObject(self._class_name, result) for result in response_dict['results']]
+                
 
-        del response_dict['objectId']
-        del response_dict['createdAt']
-        del response_dict['updatedAt']
 
-        response_dict = dict(map(self._convertFromParseType, response_dict.items()))
-
-        new_parse_obj.__dict__.update(response_dict)
-
-        return new_parse_obj
-
-    def _convertFromParseType(self, prop):
-        key, value = prop
-
-        if type(value) == dict and value.has_key('__type'):
-            if value['__type'] == 'Pointer':
-                value = ParseQuery(value['className']).get(value['objectId'])
-            elif value['__type'] == 'Date':
-                value = self._ISO8601ToDatetime(value['iso'])
-            elif value['__type'] == 'Bytes':
-                value = ParseBinaryDataWrapper(base64.b64decode(value['base64']))
-            else:
-                raise Exception('Invalid __type.')
-
-        return (key, value)
 
 
 
