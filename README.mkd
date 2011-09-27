@@ -23,22 +23,22 @@ To create a new object of the Parse class _GameScore_:
 >>> gameScore.cheatMode = False
 ~~~~~
 
-As you can see, we add new properties simply by assining values to our _ParseObject_'s attributes. Supported data types are any type that can be serialized by JSON, and Python's _datetime.datetime_ object. (Binary data and references to other _ParseObject_'s is also supported, as we'll see in a minute.)
+As you can see, we add new properties simply by assining values to our _ParseObject_'s attributes. Supported data types are any type that can be serialized by JSON and Python's _datetime.datetime_ object. (Binary data and references to other _ParseObject_'s are also supported, as we'll see in a minute.)
 
-To save it, just call the save() method:
+To save our new object, just call the save() method:
 
 ~~~~~ {python}
 >>> gameScore.save()
 ~~~~~
 
-If we want to make an update, just call save() again afterwards to send the changes to the server:
+If we want to make an update, just call save() again after modifying an attribute to send the changes to the server:
 
 ~~~~~ {python}
 >>> gameScore.score = 2061
 >>> gameScore.save()
 ~~~~~
 
-That's it! You're ready to start saving data to Parse.
+That's it! You're ready to start saving data on Parse.
 
 Object Metadata
 ---------------
@@ -60,7 +60,7 @@ Additional Datatypes
 If we want to store data in a ParseObject, we should wrap it in a ParseBinaryDataWrapper. The ParseBinaryDataWrapper behaves just like a string, and inherits all of str's methods.
 
 ~~~~~ {python}
->>> gameScore.avatarImage = ParsePy.ParseBinaryDataWrapper('\x03\xf3\r\n\xc7\x81\x7fNc ... ')
+>>> gameScore.victoryImage = ParsePy.ParseBinaryDataWrapper('\x03\xf3\r\n\xc7\x81\x7fNc ... ')
 ~~~~~
 
 We can store a reference to another ParseObject by assigning it to an attribute:
@@ -81,7 +81,7 @@ To retrieve an object with a Parse class of _GameScore_ and an objectId of _xxwX
 >>> gameScore = ParsePy.ParseQuery("GameScore").get("xxwXx9eOec")
 ~~~~~
 
-We can also run more complex queries to retrieve a range of objects. For example, if we want to get a list of _GameScore_ objects with scores between 1000 and 2000, ordered by _playerName_, we would call:
+We can also run more complex queries to retrieve a range of objects. For example, if we want to get a list of _GameScore_ objects with scores between 1000 and 2000 ordered by _playerName_, we would call:
 
 ~~~~~ {python}
 >>> query = ParsePy.ParseQuery("GameScore")
