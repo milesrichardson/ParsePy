@@ -1,12 +1,12 @@
 ParsePy
 =======
 
-*ParsePy* is a Python client for the [Parse REST API](https://www.parse.com/docs/rest). It provides Python object mapping for Parse objects with methods to save, update, and delete objects, as well as an interface for quering stored objects.
+**ParsePy** is a Python client for the [Parse REST API](https://www.parse.com/docs/rest). It provides Python object mapping for Parse objects with methods to save, update, and delete objects, as well as an interface for quering stored objects.
 
 Basic Usage
 -----------
 
-Let's get everything set up first. You'll need to give *ParsePy* your Application Id and Master Key (available from your Parse dashboard) in order to get access to your data.
+Let's get everything set up first. You'll need to give **ParsePy** your _Application Id_ and _Master Key_ (available from your Parse dashboard) in order to get access to your data.
 
 ~~~~~ {python}
 >>> import ParsePy
@@ -22,6 +22,8 @@ To create a new object of the Parse class _GameScore_:
 >>> gameScore.playerName = "Sean Plott"
 >>> gameScore.cheatMode = False
 ~~~~~
+
+As you can see, we can add new properties simply by assining values to our _ParseObject_'s attributes. Supported data types are any type that can be serialized by JSON, the and datetime.datetime object. (Binary data and references to other _ParseObject_'s is also supported, as we'll see in a minute.)
 
 To save it, just call the save() method:
 
@@ -78,16 +80,16 @@ We can also run more complex queries to retrieve a range of objects. For example
 
 Notice how queries are built by chaining filter functions. The available filter functions are:
 
-* *Less Than* lt(_parameter_name_, _value_)
-* *Less Than Or Equal To* lte(_parameter_name_, _value_)
-* *Greater Than* gt(_parameter_name_, _value_)
-* *Greater Than Or Equal To* gte(_parameter_name_, _value_)
-* *Not Equal To* ne(_parameter_name_, _value_)
-* *Limit* limit(_count_)
-* *Skip* skip(_count_)
+* **Less Than** lt(_parameter_name_, _value_)
+* **Less Than Or Equal To** lte(_parameter_name_, _value_)
+* **Greater Than** gt(_parameter_name_, _value_)
+* **Greater Than Or Equal To** gte(_parameter_name_, _value_)
+* **Not Equal To** ne(_parameter_name_, _value_)
+* **Limit** limit(_count_)
+* **Skip** skip(_count_)
 
 We can also order the results using:
 
-* *Order* order(_parameter_name_, _decending_=False)
+* **Order** order(_parameter_name_, _decending_=False)
 
-
+That's it! This is a first try at a Python library for Parse, and is probably not bug-free. If you run into any bugs, please get in touch -- parsepy@paulkastner.com. Thanks!
