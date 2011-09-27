@@ -63,7 +63,7 @@ datetime.datetime(2011, 9, 118, 14, 18, 23, 152000)
 Additional Datatypes
 --------------------
 
-If we want to store data in a ParseObject, we should wrap it in a ParseBinaryDataWrapper. The ParseBinaryDataWrapper behaves just like a string, and inherits all of str's methods.
+If we want to store data in a ParseObject, we should wrap it in a ParseBinaryDataWrapper. The ParseBinaryDataWrapper behaves just like a string, and inherits all of _str_'s methods.
 
 ~~~~~ {python}
 >>> gameScore.victoryImage = ParsePy.ParseBinaryDataWrapper('\x03\xf3\r\n\xc7\x81\x7fNc ... ')
