@@ -35,6 +35,7 @@ class ParseBase(object):
 
         request.add_header('Content-type', 'application/json')
 
+        # we could use urllib2's authentication system, but it seems like overkill for this
         auth_header =  "Basic %s" % base64.b64encode('%s:%s' % (APPLICATION_ID, MASTER_KEY))
         request.add_header("Authorization", auth_header)
 
@@ -68,10 +69,10 @@ class ParseObject(ParseBase):
         return self._object_id
 
     def updatedAt(self):
-        return self._updated_at
+        return self._upddated_at and self._ISO8601ToDatetime(self._updated_at) or None
 
     def createdAt(self):
-        return self._created_at
+        return self._created_at and self._ISO8601ToDatetime(self._created_at) or None
 
     def save(self):
         if self._object_id:
@@ -91,8 +92,8 @@ class ParseObject(ParseBase):
 
     def _populateFromDict(self, attrs_dict):
         self._object_id = attrs_dict['objectId']
-        self._created_at = self._ISO8601ToDatetime(attrs_dict['createdAt'])
-        self._updated_at = self._ISO8601ToDatetime(attrs_dict['updatedAt'])
+        self._created_at = attrs_dict['createdAt']
+        self._updated_at = attrs_dict['updatedAt']
 
         del attrs_dict['objectId']
         del attrs_dict['createdAt']

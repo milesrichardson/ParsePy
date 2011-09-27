@@ -1,7 +1,7 @@
 ParsePy
 =======
 
-**ParsePy** is a Python client for the [Parse REST API](https://www.parse.com/docs/rest). It provides Python object mapping for Parse objects with methods to save, update, and delete objects, as well as an interface for quering stored objects.
+**ParsePy** is a Python client for the [Parse REST API](https://www.parse.com/docs/rest). It provides Python object mapping for Parse objects with methods to save, update, and delete objects, as well as an interface for querying stored objects.
 
 Basic Usage
 -----------
@@ -23,7 +23,7 @@ To create a new object of the Parse class _GameScore_:
 >>> gameScore.cheatMode = False
 ~~~~~
 
-As you can see, we add new properties simply by assining values to our _ParseObject_'s attributes. Supported data types are any type that can be serialized by JSON and Python's _datetime.datetime_ object. (Binary data and references to other _ParseObject_'s are also supported, as we'll see in a minute.)
+As you can see, we add new properties simply by assigning values to our _ParseObject_'s attributes. Supported data types are any type that can be serialized by JSON and Python's _datetime.datetime_ object. (Binary data and references to other _ParseObject_'s are also supported, as we'll see in a minute.)
 
 To save our new object, just call the save() method:
 
@@ -36,6 +36,12 @@ If we want to make an update, just call save() again after modifying an attribut
 ~~~~~ {python}
 >>> gameScore.score = 2061
 >>> gameScore.save()
+~~~~~
+
+Now that we've done all that work creating our first Parse object, let's delete it:
+
+~~~~~ {python}
+>>> gameScore.delete()
 ~~~~~
 
 That's it! You're ready to start saving data on Parse.
@@ -69,6 +75,7 @@ We can store a reference to another ParseObject by assigning it to an attribute:
 >>> collectedItem = ParsePy.ParseObject("CollectedItem")
 >>> collectedItem.type = "Sword"
 >>> collectedItem.isAwesome = True
+>>> collectedItem.save() # we have to save it before it can be referenced
 >>> gameScore.item = collectedItem
 ~~~~~
 
@@ -111,4 +118,4 @@ We can also order the results using:
 * **Order**
     * order(_parameter_name_, _decending_=False)
 
-That's it! This is a first try at a Python library for Parse, and is probably not bug-free. If you run into any bugs, please get in touch -- parsepy@paulkastner.com. Thanks!
+That's it! This is a first try at a Python library for Parse, and is probably not bug-free. If you run into any issues, please get in touch -- parsepy@paulkastner.com. Thanks!
