@@ -91,16 +91,24 @@ We can also run more complex queries to retrieve a range of objects. For example
 
 Notice how queries are built by chaining filter functions. The available filter functions are:
 
-* **Less Than**: lt(_parameter_name_, _value_)
-* **Less Than Or Equal To**: lte(_parameter_name_, _value_)
-* **Greater Than**: gt(_parameter_name_, _value_)
-* **Greater Than Or Equal To**: gte(_parameter_name_, _value_)
-* **Not Equal To**: ne(_parameter_name_, _value_)
-* **Limit**: limit(_count_)
-* **Skip**: skip(_count_)
+* **Less Than**
+    * lt(_parameter_name_, _value_)
+* **Less Than Or Equal To**
+    * lte(_parameter_name_, _value_)
+* **Greater Than**
+    * gt(_parameter_name_, _value_)
+* **Greater Than Or Equal To**
+    * gte(_parameter_name_, _value_)
+* **Not Equal To**
+    * ne(_parameter_name_, _value_)
+* **Limit**
+    * limit(_count_)
+* **Skip**
+    * skip(_count_)
 
 We can also order the results using:
 
-* **Order**: order(_parameter_name_, _decending_=False)
+* **Order**
+    * order(_parameter_name_, _decending_=False)
 
 That's it! This is a first try at a Python library for Parse, and is probably not bug-free. If you run into any bugs, please get in touch -- parsepy@paulkastner.com. Thanks!
