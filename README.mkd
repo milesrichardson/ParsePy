@@ -83,7 +83,7 @@ We can store a reference to another ParseObject by assigning it to an attribute:
 Querying
 --------
 
-To retrieve an object with a Parse class of _GameScore_ and an objectId of _xxwXx9eOec_, run:
+To retrieve an object with a Parse class of _GameScore_ and an _objectId_ of _xxwXx9eOec_, run:
 
 ~~~~~ {python}
 >>> gameScore = ParsePy.ParseQuery("GameScore").get("xxwXx9eOec")
