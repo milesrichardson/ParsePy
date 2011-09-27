@@ -76,6 +76,7 @@ We can store a reference to another ParseObject by assigning it to an attribute:
 >>> collectedItem.type = "Sword"
 >>> collectedItem.isAwesome = True
 >>> collectedItem.save() # we have to save it before it can be referenced
+
 >>> gameScore.item = collectedItem
 ~~~~~
 
