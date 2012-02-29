@@ -69,7 +69,7 @@ class ParseObject(ParseBase):
         return self._object_id
 
     def updatedAt(self):
-        return self._upddated_at and self._ISO8601ToDatetime(self._updated_at) or None
+        return self._updated_at and self._ISO8601ToDatetime(self._updated_at) or None
 
     def createdAt(self):
         return self._created_at and self._ISO8601ToDatetime(self._created_at) or None
