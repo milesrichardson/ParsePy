@@ -11,7 +11,8 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import urllib, urllib2
+import urllib
+import urllib2
 import base64
 import json
 import datetime
@@ -35,9 +36,11 @@ class ParseBase(object):
 
         request.add_header('Content-type', 'application/json')
 
-        # we could use urllib2's authentication system, but it seems like overkill for this
-        auth_header =  "Basic %s" % base64.b64encode('%s:%s' % (APPLICATION_ID, MASTER_KEY))
-        request.add_header("Authorization", auth_header)
+        #auth_header =  "Basic %s" % base64.b64encode('%s:%s' %
+        #                            (APPLICATION_ID, MASTER_KEY))
+        #request.add_header("Authorization", auth_header)
+        request.add_header("X-Parse-Application-Id", APPLICATION_ID)
+        request.add_header("X-Parse-REST-API-Key", MASTER_KEY)
 
         request.get_method = lambda: http_verb
 
@@ -51,7 +54,8 @@ class ParseBase(object):
     def _ISO8601ToDatetime(self, date_string):
         # TODO: verify correct handling of timezone
         date_string = date_string[:-1] + 'UTC'
-        date = datetime.datetime.strptime(date_string, "%Y-%m-%dT%H:%M:%S.%f%Z")
+        date = datetime.datetime.strptime(date_string,
+                                            "%Y-%m-%dT%H:%M:%S.%f%Z")
         return date
 
 
@@ -69,10 +73,12 @@ class ParseObject(ParseBase):
         return self._object_id
 
     def updatedAt(self):
-        return self._updated_at and self._ISO8601ToDatetime(self._updated_at) or None
+        return (self._updated_at and self._ISO8601ToDatetime(self._updated_at)
+                    or None)
 
     def createdAt(self):
-        return self._created_at and self._ISO8601ToDatetime(self._created_at) or None
+        return (self._created_at and self._ISO8601ToDatetime(self._created_at)
+                    or None)
 
     def save(self):
         if self._object_id:
@@ -90,14 +96,37 @@ class ParseObject(ParseBase):
 
         self = self.__init__(None)
 
-    def _populateFromDict(self, attrs_dict):
-        self._object_id = attrs_dict['objectId']
-        self._created_at = attrs_dict['createdAt']
-        self._updated_at = attrs_dict['updatedAt']
+    def increment(self, key, amount=1):
+        """
+        Increment one value in the object. Note that this happens immediately:
+        it does not wait for save() to be called
+        """
+        uri = '/%s/%s' % (self._class_name, self._object_id)
+        txdata = '{"%s": {"__op": "Increment", "amount": %d}}' % (key, amount)
+        ret = self._executeCall(uri, 'PUT', txdata)
+        self._populateFromDict(ret)
 
-        del attrs_dict['objectId']
-        del attrs_dict['createdAt']
-        del attrs_dict['updatedAt']
+    def has(self, attr):
+        return attr in self.__dict__
+
+    def remove(self, attr):
+        self.__dict__.pop(attr)
+
+    def refresh(self):
+        uri = '/%s/%s' % (self._class_name, self._object_id)
+        response_dict = self._executeCall(uri, 'GET')
+        self._populateFromDict(response_dict)
+
+    def _populateFromDict(self, attrs_dict):
+        if 'objectId' in attrs_dict:
+            self._object_id = attrs_dict['objectId']
+            del attrs_dict['objectId']
+        if 'createdAt' in attrs_dict:
+            self._created_at = attrs_dict['createdAt']
+            del attrs_dict['createdAt']
+        if 'updatedAt' in attrs_dict:
+            self._updated_at = attrs_dict['updatedAt']
+            del attrs_dict['updatedAt']
 
         attrs_dict = dict(map(self._convertFromParseType, attrs_dict.items()))
 
@@ -111,8 +140,8 @@ class ParseObject(ParseBase):
                     'className': value._class_name,
                     'objectId': value._object_id}
         elif type(value) == datetime.datetime:
-            value = {'__type': 'Date',
-                    'iso': value.isoformat()[:-3] + 'Z'} # take off the last 3 digits and add a Z
+            # take off the last 3 digits and add a Z
+            value = {'__type': 'Date', 'iso': value.isoformat()[:-3] + 'Z'}
         elif type(value) == ParseBinaryDataWrapper:
             value = {'__type': 'Bytes',
                     'base64': base64.b64encode(value)}
@@ -122,13 +151,14 @@ class ParseObject(ParseBase):
     def _convertFromParseType(self, prop):
         key, value = prop
 
-        if type(value) == dict and value.has_key('__type'):
+        if type(value) == dict and '__type' in value:
             if value['__type'] == 'Pointer':
                 value = ParseQuery(value['className']).get(value['objectId'])
             elif value['__type'] == 'Date':
                 value = self._ISO8601ToDatetime(value['iso'])
             elif value['__type'] == 'Bytes':
-                value = ParseBinaryDataWrapper(base64.b64decode(value['base64']))
+                value = ParseBinaryDataWrapper(base64.b64decode(
+                                                        value['base64']))
             else:
                 raise Exception('Invalid __type.')
 
@@ -139,12 +169,14 @@ class ParseObject(ParseBase):
         properties_list = self.__dict__.items()
 
         # filter properties that start with an underscore
-        properties_list = filter(lambda prop: prop[0][0] != '_', properties_list)
+        properties_list = filter(lambda prop: prop[0][0] != '_',
+                                    properties_list)
 
-        #properties_list = [(key, value) for key, value in self.__dict__.items() if key[0] != '_']
+        #properties_list = [(key, value) for key, value
+        #                        in self.__dict__.items() if key[0] != '_']
 
         properties_list = map(self._convertToParseType, properties_list)
-        
+
         properties_dict = dict(properties_list)
         json_properties = json.dumps(properties_dict)
 
@@ -159,7 +191,7 @@ class ParseObject(ParseBase):
         data = self._getJSONProperties()
 
         response_dict = self._executeCall(uri, 'POST', data)
-        
+
         self._created_at = self._updated_at = response_dict['createdAt']
         self._object_id = response_dict['objectId']
 
@@ -192,15 +224,15 @@ class ParseQuery(ParseBase):
     def lt(self, name, value):
         self._where[name]['$lt'] = value
         return self
-        
+
     def lte(self, name, value):
         self._where[name]['$lte'] = value
         return self
-        
+
     def gt(self, name, value):
         self._where[name]['$gt'] = value
         return self
-        
+
     def gte(self, name, value):
         self._where[name]['$gte'] = value
         return self
@@ -227,9 +259,9 @@ class ParseQuery(ParseBase):
         return self._fetch(single_result=True)
 
     def fetch(self):
-        # hide the single_result param of the _fetch method from the library user
-        # since it's only useful internally
-        return self._fetch() 
+        # hide the single_result param of the _fetch method from the library
+        # user since it's only useful internally
+        return self._fetch()
 
     def _fetch(self, single_result=False):
         # URL: /1/classes/<className>/<objectId>
@@ -238,7 +270,7 @@ class ParseQuery(ParseBase):
         if self._object_id:
             uri = '/%s/%s' % (self._class_name, self._object_id)
         else:
-            options = dict(self._options) # make a local copy
+            options = dict(self._options)  # make a local copy
             if self._where:
                 # JSON encode WHERE values
                 where = json.dumps(self._where)
@@ -251,5 +283,5 @@ class ParseQuery(ParseBase):
         if single_result:
             return ParseObject(self._class_name, response_dict)
         else:
-            return [ParseObject(self._class_name, result) for result in response_dict['results']]
-                
+            return [ParseObject(self._class_name, result)
+                        for result in response_dict['results']]
