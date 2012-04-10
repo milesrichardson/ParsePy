@@ -128,6 +128,17 @@ class TestParseObjectAndQuery(unittest.TestCase):
         self.assertEqual(comment2.parent.objectId(), post_id)
         self.assertEqual(comment2.parent.title, "I'm Hungry")
 
+    def test_delete(self):
+        """Test deleting an object"""
+        o = test_obj(True)
+        obj_id = o.objectId()
+        self.check_test_obj(o)
+        o2 = ParsePy.ParseQuery("GameScore").get(obj_id)
+        self.check_test_obj(o2)
+        o2.delete()
+        self.assertRaises(urllib2.HTTPError,
+                            ParsePy.ParseQuery("GameScore").get, obj_id)
+
 
 if __name__ == "__main__":
     # command line

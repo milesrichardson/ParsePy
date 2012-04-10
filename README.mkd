@@ -38,6 +38,12 @@ If we want to make an update, just call save() again after modifying an attribut
 >>> gameScore.save()
 ~~~~~
 
+You can also increment the score in a single API query:
+
+~~~~~ {python}
+>>> gameScore.increment("score")
+~~~~~
+
 Now that we've done all that work creating our first Parse object, let's delete it:
 
 ~~~~~ {python}
