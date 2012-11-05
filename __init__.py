@@ -17,6 +17,7 @@ import base64
 import json
 import datetime
 import collections
+import re
 
 API_ROOT = 'https://api.parse.com/1/classes'
 
@@ -117,6 +118,10 @@ class ParseObject(ParseBase):
         response_dict = self._executeCall(uri, 'GET')
         self._populateFromDict(response_dict)
 
+    def _isGeoPoint(self,value):
+        if isinstance(value, str):
+            return re.search("\\bPOINT\\(\\b([-+]?\\d*\\.\\d+|\\d+) ([-+]?\\d*\\.\\d+|\\d+)\\)", value, re.I)
+    
     def _populateFromDict(self, attrs_dict):
         if 'objectId' in attrs_dict:
             self._object_id = attrs_dict['objectId']
@@ -145,6 +150,11 @@ class ParseObject(ParseBase):
         elif type(value) == ParseBinaryDataWrapper:
             value = {'__type': 'Bytes',
                     'base64': base64.b64encode(value)}
+        elif self._isGeoPoint(value):
+            coordinates=re.findall(r'[-+]?\d*\.\d+|\d+',value)
+            value= {'__type':'GeoPoint',
+                    'latitude':float(coordinates[0]),
+                    'longitude':float(coordinates[1])}
 
         return (key, value)
 
@@ -159,6 +169,8 @@ class ParseObject(ParseBase):
             elif value['__type'] == 'Bytes':
                 value = ParseBinaryDataWrapper(base64.b64decode(
                                                         value['base64']))
+            elif value['__type'] == 'GeoPoint':
+                value = 'POINT(%s %s)'%(value['latitude'],value['longitude'])
             else:
                 raise Exception('Invalid __type.')
 
