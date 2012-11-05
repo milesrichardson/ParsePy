@@ -118,10 +118,11 @@ class ParseObject(ParseBase):
         response_dict = self._executeCall(uri, 'GET')
         self._populateFromDict(response_dict)
 
-    def _isGeoPoint(self,value):
+    def _isGeoPoint(self, value):
         if isinstance(value, str):
-            return re.search("\\bPOINT\\(\\b([-+]?\\d*\\.\\d+|\\d+) ([-+]?\\d*\\.\\d+|\\d+)\\)", value, re.I)
-    
+            return re.search("\\bPOINT\\(\\b([-+]?\\d*\\.\\d+|\\d+) " +
+                             "([-+]?\\d*\\.\\d+|\\d+)\\)", value, re.I)
+
     def _populateFromDict(self, attrs_dict):
         if 'objectId' in attrs_dict:
             self._object_id = attrs_dict['objectId']
@@ -151,10 +152,10 @@ class ParseObject(ParseBase):
             value = {'__type': 'Bytes',
                     'base64': base64.b64encode(value)}
         elif self._isGeoPoint(value):
-            coordinates=re.findall(r'[-+]?\d*\.\d+|\d+',value)
-            value= {'__type':'GeoPoint',
-                    'latitude':float(coordinates[0]),
-                    'longitude':float(coordinates[1])}
+            coordinates = re.findall(r'[-+]?\d*\.\d+|\d+', value)
+            value = {'__type': 'GeoPoint',
+                     'latitude': float(coordinates[0]),
+                     'longitude': float(coordinates[1])}
 
         return (key, value)
 
@@ -170,7 +171,8 @@ class ParseObject(ParseBase):
                 value = ParseBinaryDataWrapper(base64.b64decode(
                                                         value['base64']))
             elif value['__type'] == 'GeoPoint':
-                value = 'POINT(%s %s)'%(value['latitude'],value['longitude'])
+                value = 'POINT(%s %s)' % (value['latitude'],
+                                          value['longitude'])
             else:
                 raise Exception('Invalid __type.')
 
