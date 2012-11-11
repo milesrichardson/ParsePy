@@ -26,7 +26,7 @@ def test_obj(saved=False):
     ret.score = 1337
     ret.playerName = "Sean Plott"
     ret.cheatMode = False
-    ret.location = "POINT(30.0 -43.21)"  # "POINT(30 -43.21)"
+    ret.location = "POINT(-30.0 43.21)"  # "POINT(30 -43.21)"
     if saved:
         ret.save()
     return ret
@@ -49,7 +49,7 @@ class TestParseObjectAndQuery(unittest.TestCase):
         # TODO: str vs unicode
         #self.assertEqual(o.playerName.__class__, unicode)
         self.assertEqual(o.cheatMode.__class__, bool)
-        self.assertEqual(o.location, "POINT(30.0 -43.21)")
+        self.assertEqual(o.location, "POINT(-30.0 43.21)")
 
     def test_object(self):
         """Test the creation, retrieval and updating of a ParseObject"""

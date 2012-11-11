@@ -120,8 +120,8 @@ class ParseObject(ParseBase):
 
     def _isGeoPoint(self, value):
         if isinstance(value, str):
-            return re.search("\\bPOINT\\(\\b([-+]?\\d*\\.\\d+|\\d+) " +
-                             "([-+]?\\d*\\.\\d+|\\d+)\\)", value, re.I)
+            return re.search("\\bPOINT\\(([-+]?[0-9]*\\.?[0-9]*) " +
+                             "([-+]?[0-9]*\\.?[0-9]*)\\)", value, re.I)
 
     def _populateFromDict(self, attrs_dict):
         if 'objectId' in attrs_dict:
@@ -152,7 +152,9 @@ class ParseObject(ParseBase):
             value = {'__type': 'Bytes',
                     'base64': base64.b64encode(value)}
         elif self._isGeoPoint(value):
-            coordinates = re.findall(r'[-+]?\d*\.\d+|\d+', value)
+            print value
+            coordinates = re.findall("[-+]?[0-9]+\\.?[0-9]*", value)
+            print coordinates
             value = {'__type': 'GeoPoint',
                      'latitude': float(coordinates[0]),
                      'longitude': float(coordinates[1])}
