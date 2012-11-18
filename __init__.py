@@ -156,8 +156,8 @@ class ParseObject(ParseBase):
             coordinates = re.findall("[-+]?[0-9]+\\.?[0-9]*", value)
             print coordinates
             value = {'__type': 'GeoPoint',
-                     'latitude': float(coordinates[0]),
-                     'longitude': float(coordinates[1])}
+                     'longitude': float(coordinates[0]),
+                     'latitude': float(coordinates[1])}
 
         return (key, value)
 
@@ -173,8 +173,8 @@ class ParseObject(ParseBase):
                 value = ParseBinaryDataWrapper(base64.b64decode(
                                                         value['base64']))
             elif value['__type'] == 'GeoPoint':
-                value = 'POINT(%s %s)' % (value['latitude'],
-                                          value['longitude'])
+                value = 'POINT(%s %s)' % (value['longitude'],
+                                          value['latitude'])
             else:
                 raise Exception('Invalid __type.')
 
