@@ -86,7 +86,7 @@ We can store a reference to another ParseObject by assigning it to an attribute:
 >>> gameScore.item = collectedItem
 ~~~~~
 
-We can also store geoPoint dataTypes as attributes using the format <code>'POINT(latitude longitude)'</code>, with latitude and longitude as float values
+We can also store geoPoint dataTypes as attributes using the format <code>'POINT(longitude latitude)'</code>, with latitude and longitude as float values
 
 ~~~~~ {python}
 >>> restaurant = ParsePy.ParseObject("Restaurant")
