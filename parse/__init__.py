@@ -36,28 +36,21 @@ class ParseBase(object):
         request = urllib2.Request(url, data)
 
         request.add_header('Content-type', 'application/json')
-
-        #auth_header =  "Basic %s" % base64.b64encode('%s:%s' %
-        #                            (APPLICATION_ID, MASTER_KEY))
-        #request.add_header("Authorization", auth_header)
-        request.add_header("X-Parse-Application-Id", APPLICATION_ID)
-        request.add_header("X-Parse-REST-API-Key", MASTER_KEY)
+        request.add_header('X-Parse-Application-Id', APPLICATION_ID)
+        request.add_header('X-Parse-REST-API-Key', MASTER_KEY)
 
         request.get_method = lambda: http_verb
 
         # TODO: add error handling for server response
         response = urllib2.urlopen(request)
         response_body = response.read()
-        response_dict = json.loads(response_body)
+        return json.loads(response_body)
 
-        return response_dict
 
     def _ISO8601ToDatetime(self, date_string):
         # TODO: verify correct handling of timezone
         date_string = date_string[:-1] + 'UTC'
-        date = datetime.datetime.strptime(date_string,
-                                            "%Y-%m-%dT%H:%M:%S.%f%Z")
-        return date
+        return datetime.datetime.strptime(date_string, '%Y-%m-%dT%H:%M:%S.%f%Z')
 
 
 class ParseObject(ParseBase):
@@ -120,8 +113,8 @@ class ParseObject(ParseBase):
 
     def _isGeoPoint(self, value):
         if isinstance(value, str):
-            return re.search("\\bPOINT\\(([-+]?[0-9]*\\.?[0-9]*) " +
-                             "([-+]?[0-9]*\\.?[0-9]*)\\)", value, re.I)
+            return re.search('\\bPOINT\\(([-+]?[0-9]*\\.?[0-9]*) ' +
+                             '([-+]?[0-9]*\\.?[0-9]*)\\)', value, re.I)
 
     def _populateFromDict(self, attrs_dict):
         if 'objectId' in attrs_dict:
@@ -152,9 +145,7 @@ class ParseObject(ParseBase):
             value = {'__type': 'Bytes',
                     'base64': base64.b64encode(value)}
         elif self._isGeoPoint(value):
-            print value
-            coordinates = re.findall("[-+]?[0-9]+\\.?[0-9]*", value)
-            print coordinates
+            coordinates = re.findall('[-+]?[0-9]+\\.?[0-9]*', value)
             value = {'__type': 'GeoPoint',
                      'longitude': float(coordinates[0]),
                      'latitude': float(coordinates[1])}
