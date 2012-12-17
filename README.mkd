@@ -9,15 +9,15 @@ Basic Usage
 Let's get everything set up first. You'll need to give **ParsePy** your _Application Id_ and _Master Key_ (available from your Parse dashboard) in order to get access to your data.
 
 ~~~~~ {python}
->>> import ParsePy
->>> ParsePy.APPLICATION_ID = "your application id"
->>> ParsePy.MASTER_KEY = "your master key here"
+>>> import parse
+>>> parse.APPLICATION_ID = "your application id"
+>>> parse.MASTER_KEY = "your master key here"
 ~~~~~
 
 To create a new object of the Parse class _GameScore_:
 
 ~~~~~ {python}
->>> gameScore = ParsePy.ParseObject("GameScore")
+>>> gameScore = parse.ParseObject("GameScore")
 >>> gameScore.score = 1337
 >>> gameScore.playerName = "Sean Plott"
 >>> gameScore.cheatMode = False
@@ -72,13 +72,13 @@ Additional Datatypes
 If we want to store data in a ParseObject, we should wrap it in a ParseBinaryDataWrapper. The ParseBinaryDataWrapper behaves just like a string, and inherits all of _str_'s methods.
 
 ~~~~~ {python}
->>> gameScore.victoryImage = ParsePy.ParseBinaryDataWrapper('\x03\xf3\r\n\xc7\x81\x7fNc ... ')
+>>> gameScore.victoryImage = parse.ParseBinaryDataWrapper('\x03\xf3\r\n\xc7\x81\x7fNc ... ')
 ~~~~~
 
 We can store a reference to another ParseObject by assigning it to an attribute:
 
 ~~~~~ {python}
->>> collectedItem = ParsePy.ParseObject("CollectedItem")
+>>> collectedItem = parse.ParseObject("CollectedItem")
 >>> collectedItem.type = "Sword"
 >>> collectedItem.isAwesome = True
 >>> collectedItem.save() # we have to save it before it can be referenced
@@ -89,7 +89,7 @@ We can store a reference to another ParseObject by assigning it to an attribute:
 We can also store geoPoint dataTypes as attributes using the format <code>'POINT(longitude latitude)'</code>, with latitude and longitude as float values
 
 ~~~~~ {python}
->>> restaurant = ParsePy.ParseObject("Restaurant")
+>>> restaurant = parse.ParseObject("Restaurant")
 >>> restaurant.name = "Los Pollos Hermanos"
 >>> restaurant.location ="POINT(12.0 -34.45)"
 >>> restaurant.save()
@@ -102,13 +102,13 @@ Querying
 To retrieve an object with a Parse class of _GameScore_ and an _objectId_ of _xxwXx9eOec_, run:
 
 ~~~~~ {python}
->>> gameScore = ParsePy.ParseQuery("GameScore").get("xxwXx9eOec")
+>>> gameScore = parse.ParseQuery("GameScore").get("xxwXx9eOec")
 ~~~~~
 
 We can also run more complex queries to retrieve a range of objects. For example, if we want to get a list of _GameScore_ objects with scores between 1000 and 2000 ordered by _playerName_, we would call:
 
 ~~~~~ {python}
->>> query = ParsePy.ParseQuery("GameScore")
+>>> query = parse.ParseQuery("GameScore")
 >>> query = query.gte("score", 1000).lt("score", 2000).order("playerName")
 >>> GameScores = query.fetch()
 ~~~~~
