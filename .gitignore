@@ -1,6 +1,6 @@
 
-*.pyc
-
 .DS_Store
-
+*.pyc
+*.pyo
+build/*
 settings_local.py
