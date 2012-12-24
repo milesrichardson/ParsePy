@@ -18,12 +18,14 @@ import json
 import datetime
 import collections
 import re
+import logging
 
 API_ROOT = 'https://api.parse.com/1/classes'
 
 APPLICATION_ID = ''
-MASTER_KEY = ''
+API_KEY = ''
 
+log = logging.getLogger(__name__)
 
 class ParseBinaryDataWrapper(str):
     pass
@@ -37,14 +39,18 @@ class ParseBase(object):
 
         request.add_header('Content-type', 'application/json')
         request.add_header('X-Parse-Application-Id', APPLICATION_ID)
-        request.add_header('X-Parse-REST-API-Key', MASTER_KEY)
+        request.add_header('X-Parse-REST-API-Key', API_KEY)
 
         request.get_method = lambda: http_verb
 
         # TODO: add error handling for server response
-        response = urllib2.urlopen(request)
-        response_body = response.read()
-        return json.loads(response_body)
+        try:
+            response = urllib2.urlopen(request)
+        except urllib2.HTTPError, why:
+            #log.error(why)
+            return None
+
+        return json.loads(response.read())
 
 
     def _ISO8601ToDatetime(self, date_string):
@@ -161,8 +167,7 @@ class ParseObject(ParseBase):
             elif value['__type'] == 'Date':
                 value = self._ISO8601ToDatetime(value['iso'])
             elif value['__type'] == 'Bytes':
-                value = ParseBinaryDataWrapper(base64.b64decode(
-                                                        value['base64']))
+                value = ParseBinaryDataWrapper(base64.b64decode(value['base64']))
             elif value['__type'] == 'GeoPoint':
                 value = 'POINT(%s %s)' % (value['longitude'],
                                           value['latitude'])
@@ -172,22 +177,11 @@ class ParseObject(ParseBase):
         return (key, value)
 
     def _getJSONProperties(self):
-
-        properties_list = self.__dict__.items()
-
-        # filter properties that start with an underscore
-        properties_list = filter(lambda prop: prop[0][0] != '_',
-                                    properties_list)
-
-        #properties_list = [(key, value) for key, value
-        #                        in self.__dict__.items() if key[0] != '_']
-
-        properties_list = map(self._convertToParseType, properties_list)
-
-        properties_dict = dict(properties_list)
-        json_properties = json.dumps(properties_dict)
-
-        return json_properties
+        # filter properties that start with an underscore, and convert them.
+        return json.dumps(dict([
+                    self._convertToParseType(p) for p in self.__dict__.items()
+                    if p[0][0] != '_'
+                    ]))
 
     def _create(self):
         # URL: /1/classes/<className>
@@ -285,7 +279,7 @@ class ParseQuery(ParseBase):
 
             uri = '/%s?%s' % (self._class_name, urllib.urlencode(options))
 
-        response_dict = self._executeCall(uri, 'GET')
+        response_dict = self._executeCall(uri, 'GET')        
 
         if single_result:
             return ParseObject(self._class_name, response_dict)
