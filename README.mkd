@@ -11,7 +11,7 @@ Let's get everything set up first. You'll need to give **ParsePy** your _Applica
 ~~~~~ {python}
 >>> import parse
 >>> parse.APPLICATION_ID = "your application id"
->>> parse.MASTER_KEY = "your master key here"
+>>> parse.API_KEY = "your API key here"
 ~~~~~
 
 To create a new object of the Parse class _GameScore_:
