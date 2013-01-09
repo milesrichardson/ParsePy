@@ -20,46 +20,133 @@ import collections
 import re
 import logging
 
-API_ROOT = 'https://api.parse.com/1/classes'
+API_ROOT = 'https://api.parse.com/1'
 
 APPLICATION_ID = ''
 API_KEY = ''
-
-log = logging.getLogger(__name__)
+MASTER_KEY = ''
 
 class ParseBinaryDataWrapper(str):
     pass
 
 
 class ParseBase(object):
-    def _executeCall(self, uri, http_verb, data=None):
-        url = API_ROOT + uri
+    ENDPOINT_ROOT = API_ROOT
+
+    @classmethod
+    def execute(cls, uri, http_verb, extra_headers=None, **kw):
+        headers = extra_headers or {}
+        url = uri if uri.startswith(API_ROOT) else cls.ENDPOINT_ROOT + uri
+        data = kw and json.dumps(kw) or None
+        if http_verb == 'GET' and data:
+            url += '?%s' % urllib.urlencode(kw)
+            data = None
 
         request = urllib2.Request(url, data)
-
         request.add_header('Content-type', 'application/json')
         request.add_header('X-Parse-Application-Id', APPLICATION_ID)
         request.add_header('X-Parse-REST-API-Key', API_KEY)
+        for header, value in headers.items(): request.add_header(header, value)
 
         request.get_method = lambda: http_verb
 
         # TODO: add error handling for server response
-        try:
-            response = urllib2.urlopen(request)
-        except urllib2.HTTPError, why:
-            #log.error(why)
-            return None
-
+        response = urllib2.urlopen(request)
         return json.loads(response.read())
 
+    @classmethod
+    def GET(cls, uri, **kw):
+        return cls.execute(uri, 'GET', **kw)
+
+    @classmethod
+    def POST(cls, uri, **kw):
+        return cls.execute(uri, 'POST', **kw)
+
+    @classmethod
+    def PUT(cls, uri, **kw):
+        return cls.execute(uri, 'PUT', **kw)
+
+    @property
+    def _attributes(self):
+        # return "public" attributes converted to the base parse representation.
+        return dict([
+                self._convertToParseType(p) for p in self.__dict__.items()
+                if p[0][0] != '_'
+                ])
+
+    def _isGeoPoint(self, value):
+        if isinstance(value, str):
+            return re.search('\\bPOINT\\(([-+]?[0-9]*\\.?[0-9]*) ' +
+                             '([-+]?[0-9]*\\.?[0-9]*)\\)', value, re.I)
 
     def _ISO8601ToDatetime(self, date_string):
         # TODO: verify correct handling of timezone
         date_string = date_string[:-1] + 'UTC'
         return datetime.datetime.strptime(date_string, '%Y-%m-%dT%H:%M:%S.%f%Z')
 
+    def _convertToParseType(self, prop):
+        key, value = prop
+
+        if type(value) == ParseObject:
+            value = {'__type': 'Pointer',
+                    'className': value._class_name,
+                    'objectId': value._object_id}
+        elif type(value) == datetime.datetime:
+            # take off the last 3 digits and add a Z
+            value = {'__type': 'Date', 'iso': value.isoformat()[:-3] + 'Z'}
+        elif type(value) == ParseBinaryDataWrapper:
+            value = {'__type': 'Bytes',
+                    'base64': base64.b64encode(value)}
+        elif self._isGeoPoint(value):
+            coordinates = re.findall('[-+]?[0-9]+\\.?[0-9]*', value)
+            value = {'__type': 'GeoPoint',
+                     'longitude': float(coordinates[0]),
+                     'latitude': float(coordinates[1])}
+
+        return (key, value)
+
+
+class ParseUser(ParseBase):
+    ENDPOINT_ROOT = '/'.join([API_ROOT, 'users'])
+
+    @classmethod
+    def signup(cls, username, password, **kw):
+        return cls.POST('', username=username, password=password, **kw)
+
+    @classmethod
+    def login(cls, username, password):
+        return cls.GET('/'.join([API_ROOT, 'login']), username=username, password=password)
+
+    @classmethod
+    def request_password_reset(cls, email):
+        return cls.POST('/'.join([API_ROOT, 'requestPasswordReset']), email=email)
+
+    @classmethod
+    def retrieve(cls, user_id):
+        return cls(**cls.GET('/' + user_id))
+
+    def __init__(self, **kw):
+        self._object_id = kw.pop('objectId', None)
+        self._updated_at = kw.pop('updatedAt', None)
+        self._created_at = kw.pop('createdAt', None)
+
+        for attr, value in kw.items():
+            self.__dict__[attr] = value
+
+
+    _absolute_url = property(lambda self: '/'.join([self.__class__.ENDPOINT_ROOT + self._object_id]))
+
+    def save(self, session=None):
+        session_header = {'X-Parse-Session-Token': session and session.get('sessionToken') }
+
+        return self.__class__.PUT(
+            self._absolute_url, extra_headers=session_header, **self._attributes
+            )
+
 
 class ParseObject(ParseBase):
+    ENDPOINT_ROOT = '/'.join([API_ROOT, 'classes'])
+
     def __init__(self, class_name, attrs_dict=None):
         self._class_name = class_name
         self._object_id = None
@@ -92,7 +179,7 @@ class ParseObject(ParseBase):
 
         uri = '/%s/%s' % (self._class_name, self._object_id)
 
-        self._executeCall(uri, 'DELETE')
+        self.__class__.execute(uri, 'DELETE')
 
         self = self.__init__(None)
 
@@ -102,9 +189,13 @@ class ParseObject(ParseBase):
         it does not wait for save() to be called
         """
         uri = '/%s/%s' % (self._class_name, self._object_id)
-        txdata = '{"%s": {"__op": "Increment", "amount": %d}}' % (key, amount)
-        ret = self._executeCall(uri, 'PUT', txdata)
-        self._populateFromDict(ret)
+        payload = {
+            key: {
+                '__op': 'Increment',
+                'amount': amount
+                }
+            }
+        self._populateFromDict(self.__class__.execute(uri, 'PUT', **payload))
 
     def has(self, attr):
         return attr in self.__dict__
@@ -114,13 +205,8 @@ class ParseObject(ParseBase):
 
     def refresh(self):
         uri = '/%s/%s' % (self._class_name, self._object_id)
-        response_dict = self._executeCall(uri, 'GET')
+        response_dict = self.__class__.execute(uri, 'GET')
         self._populateFromDict(response_dict)
-
-    def _isGeoPoint(self, value):
-        if isinstance(value, str):
-            return re.search('\\bPOINT\\(([-+]?[0-9]*\\.?[0-9]*) ' +
-                             '([-+]?[0-9]*\\.?[0-9]*)\\)', value, re.I)
 
     def _populateFromDict(self, attrs_dict):
         if 'objectId' in attrs_dict:
@@ -136,27 +222,6 @@ class ParseObject(ParseBase):
         attrs_dict = dict(map(self._convertFromParseType, attrs_dict.items()))
 
         self.__dict__.update(attrs_dict)
-
-    def _convertToParseType(self, prop):
-        key, value = prop
-
-        if type(value) == ParseObject:
-            value = {'__type': 'Pointer',
-                    'className': value._class_name,
-                    'objectId': value._object_id}
-        elif type(value) == datetime.datetime:
-            # take off the last 3 digits and add a Z
-            value = {'__type': 'Date', 'iso': value.isoformat()[:-3] + 'Z'}
-        elif type(value) == ParseBinaryDataWrapper:
-            value = {'__type': 'Bytes',
-                    'base64': base64.b64encode(value)}
-        elif self._isGeoPoint(value):
-            coordinates = re.findall('[-+]?[0-9]+\\.?[0-9]*', value)
-            value = {'__type': 'GeoPoint',
-                     'longitude': float(coordinates[0]),
-                     'latitude': float(coordinates[1])}
-
-        return (key, value)
 
     def _convertFromParseType(self, prop):
         key, value = prop
@@ -176,12 +241,13 @@ class ParseObject(ParseBase):
 
         return (key, value)
 
-    def _getJSONProperties(self):
-        # filter properties that start with an underscore, and convert them.
-        return json.dumps(dict([
-                    self._convertToParseType(p) for p in self.__dict__.items()
-                    if p[0][0] != '_'
-                    ]))
+    @property
+    def _attributes(self):
+        # return "public" attributes converted to the base parse representation.
+        return dict([
+                self._convertToParseType(p) for p in self.__dict__.items()
+                if p[0][0] != '_'
+                ])
 
     def _create(self):
         # URL: /1/classes/<className>
@@ -189,9 +255,7 @@ class ParseObject(ParseBase):
 
         uri = '/%s' % self._class_name
 
-        data = self._getJSONProperties()
-
-        response_dict = self._executeCall(uri, 'POST', data)
+        response_dict = self.__class__.POST(uri, **self._attributes)
 
         self._created_at = self._updated_at = response_dict['createdAt']
         self._object_id = response_dict['objectId']
@@ -202,14 +266,14 @@ class ParseObject(ParseBase):
 
         uri = '/%s/%s' % (self._class_name, self._object_id)
 
-        data = self._getJSONProperties()
-
-        response_dict = self._executeCall(uri, 'PUT', data)
+        response_dict = self.execute(uri, 'PUT', **self._attributes)
 
         self._updated_at = response_dict['updatedAt']
 
 
 class ParseQuery(ParseBase):
+    ENDPOINT_ROOT = '/'.join([API_ROOT, 'classes'])
+
     def __init__(self, class_name):
         self._class_name = class_name
         self._where = collections.defaultdict(dict)
@@ -269,7 +333,7 @@ class ParseQuery(ParseBase):
         # HTTP Verb: GET
 
         if self._object_id:
-            uri = '/%s/%s' % (self._class_name, self._object_id)
+            response = self.__class__.GET('/%s/%s' % (self._class_name, self._object_id))
         else:
             options = dict(self._options)  # make a local copy
             if self._where:
@@ -277,12 +341,29 @@ class ParseQuery(ParseBase):
                 where = json.dumps(self._where)
                 options.update({'where': where})
 
-            uri = '/%s?%s' % (self._class_name, urllib.urlencode(options))
-
-        response_dict = self._executeCall(uri, 'GET')        
+            response = self.__class__.GET('/%s' % self._class_name, **options)
 
         if single_result:
-            return ParseObject(self._class_name, response_dict)
+            return ParseObject(self._class_name, response)
         else:
-            return [ParseObject(self._class_name, result)
-                        for result in response_dict['results']]
+            return [ParseObject(self._class_name, result) for result in response['results']]
+
+class ParseUserQuery(ParseQuery):
+    ENDPOINT_ROOT = '/'.join([API_ROOT, 'users'])
+
+    def __init__(self):
+        self._where = collections.defaultdict(dict)
+        self._options = {}
+
+    def get(self, object_id):
+        return ParseUser.retrieve(object_id)
+
+    def _fetch(self):
+        options = dict(self._options)  # make a local copy
+        if self._where:
+            # JSON encode WHERE values
+            where = json.dumps(self._where)
+            options.update({'where': where})
+
+        response = self.__class__.GET('', **options)
+        return [ParseUser(**result) for result in response['results']]
