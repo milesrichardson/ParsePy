@@ -6,23 +6,23 @@ import unittest
 import urllib2
 import datetime
 
-import __init__ as ParsePy
+import __init__ as parse
 
 try:
     import settings_local
 except ImportError:
-    raise ImportError("You must create a settings_local.py file " +
-                      "with an example application to run tests")
+    raise ImportError(
+        'You must create a settings_local.py file with an example application to run tests'
+        )
 
-ParsePy.APPLICATION_ID = settings_local.APPLICATION_ID
-ParsePy.API_KEY = settings_local.API_KEY
+parse.APPLICATION_ID = settings_local.APPLICATION_ID
+parse.API_KEY = settings_local.API_KEY
 
 
 ### FUNCTIONS ###
-
 def test_obj(saved=False):
-    """Return a test ParsePy.ParseObject (content is from the docs)"""
-    ret = ParsePy.ParseObject("GameScore")
+    """Return a test parse.Object (content is from the docs)"""
+    ret = parse.Object("GameScore")
     ret.score = 1337
     ret.playerName = "Sean Plott"
     ret.cheatMode = False
@@ -33,11 +33,10 @@ def test_obj(saved=False):
 
 
 ### CLASSES ###
-
-class TestParseObjectAndQuery(unittest.TestCase):
+class TestObjectAndQuery(unittest.TestCase):
     """
-    Tests for the ParsePy.ParseObject interface for creating and updating Parse
-    objects, as well as the ParsePy.ParseQuery interface for retrieving them
+    Tests for the parse.Object interface for creating and updating Parse
+    objects, as well as the parse.Query interface for retrieving them
     """
 
     def check_test_obj(self, o):
@@ -52,13 +51,13 @@ class TestParseObjectAndQuery(unittest.TestCase):
         self.assertEqual(o.location, "POINT(-30.0 43.21)")
 
     def test_object(self):
-        """Test the creation, retrieval and updating of a ParseObject"""
+        """Test the creation, retrieval and updating of a Object"""
         gameScore = test_obj()
         gameScore.save()
         self.check_test_obj(gameScore)
 
         # retrieve a new one
-        query = ParsePy.ParseQuery("GameScore")
+        query = parse.Query('GameScore')
         obj1 = query.get(gameScore.objectId())
         self.check_test_obj(obj1)
 
@@ -95,7 +94,7 @@ class TestParseObjectAndQuery(unittest.TestCase):
         o.increment("score")
         self.assertEqual(o.score, 1338)
 
-        query = ParsePy.ParseQuery("GameScore")
+        query = parse.Query("GameScore")
         o2 = query.get(o.objectId())
         self.assertEqual(o2.score, 1338)
 
@@ -107,12 +106,12 @@ class TestParseObjectAndQuery(unittest.TestCase):
 
     def test_relationship(self):
         """Test relationship between objects"""
-        post = ParsePy.ParseObject("Post")
+        post = parse.Object("Post")
         post.title = "I'm Hungry"
         post.content = "Where should we go for lunch?"
         post.save()
 
-        comment = ParsePy.ParseObject("Comment")
+        comment = parse.Object("Comment")
         comment.content = "Let's do Sushirrito"
         comment.parent = post
         comment.save()
@@ -124,8 +123,8 @@ class TestParseObjectAndQuery(unittest.TestCase):
         self.assertEqual(comment_id.__class__, unicode)
 
         # retrieve new ones
-        post2 = ParsePy.ParseQuery("Post").get(post_id)
-        comment2 = ParsePy.ParseQuery("Comment").get(comment_id)
+        post2 = parse.Query("Post").get(post_id)
+        comment2 = parse.Query("Comment").get(comment_id)
         # check the relationship between the saved post and comment
         self.assertEqual(comment2.parent.objectId(), post_id)
         self.assertEqual(comment2.parent.title, "I'm Hungry")
@@ -135,11 +134,10 @@ class TestParseObjectAndQuery(unittest.TestCase):
         o = test_obj(True)
         obj_id = o.objectId()
         self.check_test_obj(o)
-        o2 = ParsePy.ParseQuery("GameScore").get(obj_id)
+        o2 = parse.Query("GameScore").get(obj_id)
         self.check_test_obj(o2)
         o2.delete()
-        self.assertRaises(urllib2.HTTPError,
-                            ParsePy.ParseQuery("GameScore").get, obj_id)
+        self.assertRaises(urllib2.HTTPError, parse.Query("GameScore").get, obj_id)
 
 
 if __name__ == "__main__":

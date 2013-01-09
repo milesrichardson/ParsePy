@@ -66,6 +66,10 @@ class ParseBase(object):
     def PUT(cls, uri, **kw):
         return cls.execute(uri, 'PUT', **kw)
 
+    @classmethod
+    def DELETE(cls, uri, **kw):
+        return cls.execute(uri, 'DELETE', **kw)
+
     @property
     def _attributes(self):
         # return "public" attributes converted to the base parse representation.
@@ -87,7 +91,7 @@ class ParseBase(object):
     def _convertToParseType(self, prop):
         key, value = prop
 
-        if type(value) == ParseObject:
+        if type(value) == Object:
             value = {'__type': 'Pointer',
                     'className': value._class_name,
                     'objectId': value._object_id}
@@ -106,7 +110,32 @@ class ParseBase(object):
         return (key, value)
 
 
-class ParseUser(ParseBase):
+class ParseResource(ParseBase):
+    def __init__(self, **kw):
+        self._object_id = kw.pop('objectId', None)
+        self._updated_at = kw.pop('updatedAt', None)
+        self._created_at = kw.pop('createdAt', None)
+
+        for attr, value in kw.items():
+            self.__dict__[attr] = value
+
+    @classmethod
+    def retrieve(cls, resource_id):
+        return cls(**cls.GET('/' + resource_id))
+
+    _absolute_url = property(lambda self: '/'.join([self.__class__.ENDPOINT_ROOT + self._object_id]))
+
+    def objectId(self):
+        return self._object_id
+
+    def updatedAt(self):
+        return (self._updated_at and self._ISO8601ToDatetime(self._updated_at) or None)
+
+    def createdAt(self):
+        return (self._created_at and self._ISO8601ToDatetime(self._created_at) or None)
+
+
+class User(ParseResource):
     ENDPOINT_ROOT = '/'.join([API_ROOT, 'users'])
 
     @classmethod
@@ -121,21 +150,6 @@ class ParseUser(ParseBase):
     def request_password_reset(cls, email):
         return cls.POST('/'.join([API_ROOT, 'requestPasswordReset']), email=email)
 
-    @classmethod
-    def retrieve(cls, user_id):
-        return cls(**cls.GET('/' + user_id))
-
-    def __init__(self, **kw):
-        self._object_id = kw.pop('objectId', None)
-        self._updated_at = kw.pop('updatedAt', None)
-        self._created_at = kw.pop('createdAt', None)
-
-        for attr, value in kw.items():
-            self.__dict__[attr] = value
-
-
-    _absolute_url = property(lambda self: '/'.join([self.__class__.ENDPOINT_ROOT + self._object_id]))
-
     def save(self, session=None):
         session_header = {'X-Parse-Session-Token': session and session.get('sessionToken') }
 
@@ -144,7 +158,11 @@ class ParseUser(ParseBase):
             )
 
 
-class ParseObject(ParseBase):
+class Installation(ParseResource):
+    ENDPOINT_ROOT = '/'.join([API_ROOT, 'installations'])
+
+
+class Object(ParseResource):
     ENDPOINT_ROOT = '/'.join([API_ROOT, 'classes'])
 
     def __init__(self, class_name, attrs_dict=None):
@@ -156,17 +174,6 @@ class ParseObject(ParseBase):
         if attrs_dict:
             self._populateFromDict(attrs_dict)
 
-    def objectId(self):
-        return self._object_id
-
-    def updatedAt(self):
-        return (self._updated_at and self._ISO8601ToDatetime(self._updated_at)
-                    or None)
-
-    def createdAt(self):
-        return (self._created_at and self._ISO8601ToDatetime(self._created_at)
-                    or None)
-
     def save(self):
         if self._object_id:
             self._update()
@@ -177,10 +184,7 @@ class ParseObject(ParseBase):
         # URL: /1/classes/<className>/<objectId>
         # HTTP Verb: DELETE
 
-        uri = '/%s/%s' % (self._class_name, self._object_id)
-
-        self.__class__.execute(uri, 'DELETE')
-
+        self.__class__.DELETE('/%s/%s' % (self._class_name, self._object_id))
         self = self.__init__(None)
 
     def increment(self, key, amount=1):
@@ -228,7 +232,7 @@ class ParseObject(ParseBase):
 
         if type(value) == dict and '__type' in value:
             if value['__type'] == 'Pointer':
-                value = ParseQuery(value['className']).get(value['objectId'])
+                value = Query(value['className']).get(value['objectId'])
             elif value['__type'] == 'Date':
                 value = self._ISO8601ToDatetime(value['iso'])
             elif value['__type'] == 'Bytes':
@@ -240,14 +244,6 @@ class ParseObject(ParseBase):
                 raise Exception('Invalid __type.')
 
         return (key, value)
-
-    @property
-    def _attributes(self):
-        # return "public" attributes converted to the base parse representation.
-        return dict([
-                self._convertToParseType(p) for p in self.__dict__.items()
-                if p[0][0] != '_'
-                ])
 
     def _create(self):
         # URL: /1/classes/<className>
@@ -266,19 +262,25 @@ class ParseObject(ParseBase):
 
         uri = '/%s/%s' % (self._class_name, self._object_id)
 
-        response_dict = self.execute(uri, 'PUT', **self._attributes)
-
+        response_dict = self.__class__.PUT(uri, **self._attributes)
         self._updated_at = response_dict['updatedAt']
 
+class Push(ParseResource):
+    ENDPOINT_ROOT = '/'.join([API_ROOT, 'push'])
 
-class ParseQuery(ParseBase):
-    ENDPOINT_ROOT = '/'.join([API_ROOT, 'classes'])
+    @classmethod
+    def send(cls, message, channels=None, **kw):
+        alert_message = { 'alert': message }
+        targets = {}
+        if channels: targets['channels'] = channels
+        if kw: targets['where'] = kw
+        return cls.POST('', data=alert_message, **targets)
 
-    def __init__(self, class_name):
-        self._class_name = class_name
+class Query(ParseBase):
+
+    def __init__(self):
         self._where = collections.defaultdict(dict)
         self._options = {}
-        self._object_id = ''
 
     def eq(self, name, value):
         self._where[name] = value
@@ -320,13 +322,36 @@ class ParseQuery(ParseBase):
         return self
 
     def get(self, object_id):
-        self._object_id = object_id
-        return self._fetch(single_result=True)
+        return self.__class__.QUERY_CLASS.retrieve(object_id)
 
     def fetch(self):
         # hide the single_result param of the _fetch method from the library
         # user since it's only useful internally
         return self._fetch()
+
+    def _fetch(self):
+        options = dict(self._options)  # make a local copy
+        if self._where:
+            # JSON encode WHERE values
+            where = json.dumps(self._where)
+            options.update({'where': where})
+
+        response = self.__class__.GET('', **options)
+        return [self.__class__.QUERY_CLASS(**result) for result in response['results']]
+
+
+class ObjectQuery(Query):
+    ENDPOINT_ROOT = '/'.join([API_ROOT, 'classes'])
+
+    def __init__(self, class_name):
+        self._class_name = class_name
+        self._where = collections.defaultdict(dict)
+        self._options = {}
+        self._object_id = ''
+
+    def get(self, object_id):
+        self._object_id = object_id
+        return self._fetch(single_result=True)
 
     def _fetch(self, single_result=False):
         # URL: /1/classes/<className>/<objectId>
@@ -344,19 +369,19 @@ class ParseQuery(ParseBase):
             response = self.__class__.GET('/%s' % self._class_name, **options)
 
         if single_result:
-            return ParseObject(self._class_name, response)
+            return Object(self._class_name, response)
         else:
-            return [ParseObject(self._class_name, result) for result in response['results']]
+            return [Object(self._class_name, result) for result in response['results']]
 
-class ParseUserQuery(ParseQuery):
+
+class UserQuery(Query):
     ENDPOINT_ROOT = '/'.join([API_ROOT, 'users'])
+    QUERY_CLASS = User
 
-    def __init__(self):
-        self._where = collections.defaultdict(dict)
-        self._options = {}
 
-    def get(self, object_id):
-        return ParseUser.retrieve(object_id)
+class InstallationQuery(Query):
+    ENDPOINT_ROOT = '/'.join([API_ROOT, 'installations'])
+    QUERY_CLASS = Installation
 
     def _fetch(self):
         options = dict(self._options)  # make a local copy
@@ -365,5 +390,6 @@ class ParseUserQuery(ParseQuery):
             where = json.dumps(self._where)
             options.update({'where': where})
 
-        response = self.__class__.GET('', **options)
-        return [ParseUser(**result) for result in response['results']]
+        extra_headers = {'X-Parse-Master-Key': MASTER_KEY }
+        response = self.__class__.GET('', extra_headers=extra_headers, **options)
+        return [self.__class__.QUERY_CLASS(**result) for result in response['results']]
