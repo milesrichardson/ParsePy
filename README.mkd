@@ -6,12 +6,12 @@ ParsePy
 Basic Usage
 -----------
 
-Let's get everything set up first. You'll need to give **ParsePy** your _Application Id_ and _Master Key_ (available from your Parse dashboard) in order to get access to your data.
+Let's get everything set up first. You'll need to give **ParsePy** your _Application Id_ and _REST API Key_ (available from your Parse dashboard) in order to get access to your data.
 
 ~~~~~ {python}
 >>> import ParsePy
 >>> ParsePy.APPLICATION_ID = "your application id"
->>> ParsePy.MASTER_KEY = "your master key here"
+>>> ParsePy.REST_API_KEY = "your REST API key here"
 ~~~~~
 
 To create a new object of the Parse class _GameScore_:
