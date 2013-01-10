@@ -15,7 +15,7 @@ except ImportError:
                       "with an example application to run tests")
 
 ParsePy.APPLICATION_ID = settings_local.APPLICATION_ID
-ParsePy.MASTER_KEY = settings_local.MASTER_KEY
+ParsePy.REST_API_KEY = settings_local.REST_API_KEY
 
 
 ### FUNCTIONS ###
