@@ -232,7 +232,7 @@ class Object(ParseResource):
 
         if type(value) == dict and '__type' in value:
             if value['__type'] == 'Pointer':
-                value = Query(value['className']).get(value['objectId'])
+                value = ObjectQuery(value['className']).get(value['objectId'])
             elif value['__type'] == 'Date':
                 value = self._ISO8601ToDatetime(value['iso'])
             elif value['__type'] == 'Bytes':

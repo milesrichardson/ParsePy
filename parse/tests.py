@@ -36,7 +36,7 @@ def test_obj(saved=False):
 class TestObjectAndQuery(unittest.TestCase):
     """
     Tests for the parse.Object interface for creating and updating Parse
-    objects, as well as the parse.Query interface for retrieving them
+    objects, as well as the parse.ObjectQuery interface for retrieving them
     """
 
     def check_test_obj(self, o):
@@ -57,7 +57,7 @@ class TestObjectAndQuery(unittest.TestCase):
         self.check_test_obj(gameScore)
 
         # retrieve a new one
-        query = parse.Query('GameScore')
+        query = parse.ObjectQuery('GameScore')
         obj1 = query.get(gameScore.objectId())
         self.check_test_obj(obj1)
 
@@ -94,7 +94,7 @@ class TestObjectAndQuery(unittest.TestCase):
         o.increment("score")
         self.assertEqual(o.score, 1338)
 
-        query = parse.Query("GameScore")
+        query = parse.ObjectQuery("GameScore")
         o2 = query.get(o.objectId())
         self.assertEqual(o2.score, 1338)
 
@@ -123,8 +123,8 @@ class TestObjectAndQuery(unittest.TestCase):
         self.assertEqual(comment_id.__class__, unicode)
 
         # retrieve new ones
-        post2 = parse.Query("Post").get(post_id)
-        comment2 = parse.Query("Comment").get(comment_id)
+        post2 = parse.ObjectQuery("Post").get(post_id)
+        comment2 = parse.ObjectQuery("Comment").get(comment_id)
         # check the relationship between the saved post and comment
         self.assertEqual(comment2.parent.objectId(), post_id)
         self.assertEqual(comment2.parent.title, "I'm Hungry")
@@ -134,10 +134,11 @@ class TestObjectAndQuery(unittest.TestCase):
         o = test_obj(True)
         obj_id = o.objectId()
         self.check_test_obj(o)
-        o2 = parse.Query("GameScore").get(obj_id)
+        o2 = parse.ObjectQuery("GameScore").get(obj_id)
         self.check_test_obj(o2)
         o2.delete()
-        self.assertRaises(urllib2.HTTPError, parse.Query("GameScore").get, obj_id)
+        self.assertRaises(urllib2.HTTPError,
+                          parse.ObjectQuery("GameScore").get, obj_id)
 
 
 if __name__ == "__main__":
