@@ -23,8 +23,7 @@ import logging
 API_ROOT = 'https://api.parse.com/1'
 
 APPLICATION_ID = ''
-API_KEY = ''
-MASTER_KEY = ''
+REST_API_KEY = ''
 
 class ParseBinaryDataWrapper(str):
     pass
@@ -44,9 +43,11 @@ class ParseBase(object):
 
         request = urllib2.Request(url, data)
         request.add_header('Content-type', 'application/json')
-        request.add_header('X-Parse-Application-Id', APPLICATION_ID)
-        request.add_header('X-Parse-REST-API-Key', API_KEY)
-        for header, value in headers.items(): request.add_header(header, value)
+        #auth_header =  "Basic %s" % base64.b64encode('%s:%s' %
+        #                            (APPLICATION_ID, REST_API_KEY))
+        #request.add_header("Authorization", auth_header)
+        request.add_header("X-Parse-Application-Id", APPLICATION_ID)
+        request.add_header("X-Parse-REST-API-Key", REST_API_KEY)
 
         request.get_method = lambda: http_verb
 

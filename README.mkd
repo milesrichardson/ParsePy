@@ -1,17 +1,17 @@
-ParsePy
+parse_rest
 =======
 
-**ParsePy** is a Python client for the [Parse REST API](https://www.parse.com/docs/rest). It provides Python object mapping for Parse objects with methods to save, update, and delete objects, as well as an interface for querying stored objects.
+**parse_rest** is a Python client for the [Parse REST API](https://www.parse.com/docs/rest). It provides Python object mapping for Parse objects with methods to save, update, and delete objects, as well as an interface for querying stored objects.
 
 Basic Usage
 -----------
 
-Let's get everything set up first. You'll need to give **ParsePy** your _Application Id_ and _Master Key_ (available from your Parse dashboard) in order to get access to your data.
+Let's get everything set up first. You'll need to give **parse_rest** your _Application Id_ and _REST API Key_ (available from your Parse dashboard) in order to get access to your data.
 
 ~~~~~ {python}
->>> import parse
->>> parse.APPLICATION_ID = "your application id"
->>> parse.API_KEY = "your API key here"
+>>> import parse_rest
+>>> parse_rest.APPLICATION_ID = "your application id"
+>>> parse_rest.REST_API_KEY = "your REST API key here"
 ~~~~~
 
 To create a new object of the Parse class _GameScore_:
@@ -135,4 +135,4 @@ We can also order the results using:
 * **Order**
     * order(_parameter_name_, _decending_=False)
 
-That's it! This is a first try at a Python library for Parse, and is probably not bug-free. If you run into any issues, please get in touch -- parsepy@paulkastner.com. Thanks!
+That's it! This is a first try at a Python library for Parse, and is probably not bug-free. If you run into any issues, please get in touch -- dgrtwo@princeton.edu. Thanks!

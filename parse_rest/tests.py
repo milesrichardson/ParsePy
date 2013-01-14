@@ -16,7 +16,7 @@ except ImportError:
         )
 
 parse_rest.APPLICATION_ID = settings_local.APPLICATION_ID
-parse_rest.API_KEY = settings_local.API_KEY
+parse_rest.REST_API_KEY = settings_local.REST_API_KEY
 
 
 ### FUNCTIONS ###
