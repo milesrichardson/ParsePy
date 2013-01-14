@@ -4,3 +4,5 @@
 *.pyo
 build/*
 settings_local.py
+dist
+MANIFEST
