@@ -6,7 +6,7 @@ import unittest
 import urllib2
 import datetime
 
-import __init__ as parse
+import __init__ as parse_rest
 
 try:
     import settings_local
@@ -15,14 +15,14 @@ except ImportError:
         'You must create a settings_local.py file with an example application to run tests'
         )
 
-parse.APPLICATION_ID = settings_local.APPLICATION_ID
-parse.API_KEY = settings_local.API_KEY
+parse_rest.APPLICATION_ID = settings_local.APPLICATION_ID
+parse_rest.API_KEY = settings_local.API_KEY
 
 
 ### FUNCTIONS ###
 def test_obj(saved=False):
-    """Return a test parse.Object (content is from the docs)"""
-    ret = parse.Object("GameScore")
+    """Return a test parse_rest.Object (content is from the docs)"""
+    ret = parse_rest.Object("GameScore")
     ret.score = 1337
     ret.playerName = "Sean Plott"
     ret.cheatMode = False
@@ -35,8 +35,8 @@ def test_obj(saved=False):
 ### CLASSES ###
 class TestObjectAndQuery(unittest.TestCase):
     """
-    Tests for the parse.Object interface for creating and updating Parse
-    objects, as well as the parse.ObjectQuery interface for retrieving them
+    Tests for the parse_rest.Object interface for creating and updating Parse
+    objects, as well as the parse_rest.ObjectQuery interface for retrieving them
     """
 
     def check_test_obj(self, o):
@@ -57,7 +57,7 @@ class TestObjectAndQuery(unittest.TestCase):
         self.check_test_obj(gameScore)
 
         # retrieve a new one
-        query = parse.ObjectQuery('GameScore')
+        query = parse_rest.ObjectQuery('GameScore')
         obj1 = query.get(gameScore.objectId())
         self.check_test_obj(obj1)
 
@@ -94,7 +94,7 @@ class TestObjectAndQuery(unittest.TestCase):
         o.increment("score")
         self.assertEqual(o.score, 1338)
 
-        query = parse.ObjectQuery("GameScore")
+        query = parse_rest.ObjectQuery("GameScore")
         o2 = query.get(o.objectId())
         self.assertEqual(o2.score, 1338)
 
@@ -106,12 +106,12 @@ class TestObjectAndQuery(unittest.TestCase):
 
     def test_relationship(self):
         """Test relationship between objects"""
-        post = parse.Object("Post")
+        post = parse_rest.Object("Post")
         post.title = "I'm Hungry"
         post.content = "Where should we go for lunch?"
         post.save()
 
-        comment = parse.Object("Comment")
+        comment = parse_rest.Object("Comment")
         comment.content = "Let's do Sushirrito"
         comment.parent = post
         comment.save()
@@ -123,8 +123,8 @@ class TestObjectAndQuery(unittest.TestCase):
         self.assertEqual(comment_id.__class__, unicode)
 
         # retrieve new ones
-        post2 = parse.ObjectQuery("Post").get(post_id)
-        comment2 = parse.ObjectQuery("Comment").get(comment_id)
+        post2 = parse_rest.ObjectQuery("Post").get(post_id)
+        comment2 = parse_rest.ObjectQuery("Comment").get(comment_id)
         # check the relationship between the saved post and comment
         self.assertEqual(comment2.parent.objectId(), post_id)
         self.assertEqual(comment2.parent.title, "I'm Hungry")
@@ -134,11 +134,11 @@ class TestObjectAndQuery(unittest.TestCase):
         o = test_obj(True)
         obj_id = o.objectId()
         self.check_test_obj(o)
-        o2 = parse.ObjectQuery("GameScore").get(obj_id)
+        o2 = parse_rest.ObjectQuery("GameScore").get(obj_id)
         self.check_test_obj(o2)
         o2.delete()
         self.assertRaises(urllib2.HTTPError,
-                          parse.ObjectQuery("GameScore").get, obj_id)
+                          parse_rest.ObjectQuery("GameScore").get, obj_id)
 
 
 if __name__ == "__main__":
