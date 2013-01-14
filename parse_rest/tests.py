@@ -11,9 +11,8 @@ import __init__ as parse_rest
 try:
     import settings_local
 except ImportError:
-    raise ImportError(
-        'You must create a settings_local.py file with an example application to run tests'
-        )
+    raise ImportError('You must create a settings_local.py file with an ' +
+                      'example application to run tests')
 
 parse_rest.APPLICATION_ID = settings_local.APPLICATION_ID
 parse_rest.REST_API_KEY = settings_local.REST_API_KEY
@@ -36,7 +35,8 @@ def test_obj(saved=False):
 class TestObjectAndQuery(unittest.TestCase):
     """
     Tests for the parse_rest.Object interface for creating and updating Parse
-    objects, as well as the parse_rest.ObjectQuery interface for retrieving them
+    objects, as well as the parse_rest.ObjectQuery interface for retrieving
+    them
     """
 
     def check_test_obj(self, o):

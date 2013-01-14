@@ -25,6 +25,7 @@ API_ROOT = 'https://api.parse.com/1'
 APPLICATION_ID = ''
 REST_API_KEY = ''
 
+
 class ParseBinaryDataWrapper(str):
     pass
 
@@ -73,7 +74,7 @@ class ParseBase(object):
 
     @property
     def _attributes(self):
-        # return "public" attributes converted to the base parse representation.
+        # return "public" attributes converted to the base parse representation
         return dict([
                 self._convertToParseType(p) for p in self.__dict__.items()
                 if p[0][0] != '_'
@@ -87,7 +88,8 @@ class ParseBase(object):
     def _ISO8601ToDatetime(self, date_string):
         # TODO: verify correct handling of timezone
         date_string = date_string[:-1] + 'UTC'
-        return datetime.datetime.strptime(date_string, '%Y-%m-%dT%H:%M:%S.%f%Z')
+        return datetime.datetime.strptime(date_string,
+                                            '%Y-%m-%dT%H:%M:%S.%f%Z')
 
     def _convertToParseType(self, prop):
         key, value = prop
@@ -124,16 +126,19 @@ class ParseResource(ParseBase):
     def retrieve(cls, resource_id):
         return cls(**cls.GET('/' + resource_id))
 
-    _absolute_url = property(lambda self: '/'.join([self.__class__.ENDPOINT_ROOT + self._object_id]))
+    _absolute_url = property(lambda self: '/'.join(
+                             [self.__class__.ENDPOINT_ROOT + self._object_id]))
 
     def objectId(self):
         return self._object_id
 
     def updatedAt(self):
-        return (self._updated_at and self._ISO8601ToDatetime(self._updated_at) or None)
+        return (self._updated_at and self._ISO8601ToDatetime(self._updated_at)
+                    or None)
 
     def createdAt(self):
-        return (self._created_at and self._ISO8601ToDatetime(self._created_at) or None)
+        return (self._created_at and self._ISO8601ToDatetime(self._created_at)
+                    or None)
 
 
 class User(ParseResource):
@@ -145,18 +150,21 @@ class User(ParseResource):
 
     @classmethod
     def login(cls, username, password):
-        return cls.GET('/'.join([API_ROOT, 'login']), username=username, password=password)
+        return cls.GET('/'.join([API_ROOT, 'login']), username=username,
+                            password=password)
 
     @classmethod
     def request_password_reset(cls, email):
-        return cls.POST('/'.join([API_ROOT, 'requestPasswordReset']), email=email)
+        return cls.POST('/'.join([API_ROOT, 'requestPasswordReset']),
+                         email=email)
 
     def save(self, session=None):
-        session_header = {'X-Parse-Session-Token': session and session.get('sessionToken') }
+        session_header = {'X-Parse-Session-Token': session and
+                                                 session.get('sessionToken')}
 
         return self.__class__.PUT(
-            self._absolute_url, extra_headers=session_header, **self._attributes
-            )
+                            self._absolute_url, extra_headers=session_header,
+                            **self._attributes)
 
 
 class Installation(ParseResource):
@@ -237,7 +245,8 @@ class Object(ParseResource):
             elif value['__type'] == 'Date':
                 value = self._ISO8601ToDatetime(value['iso'])
             elif value['__type'] == 'Bytes':
-                value = ParseBinaryDataWrapper(base64.b64decode(value['base64']))
+                value = ParseBinaryDataWrapper(base64.b64decode(
+                                                            value['base64']))
             elif value['__type'] == 'GeoPoint':
                 value = 'POINT(%s %s)' % (value['longitude'],
                                           value['latitude'])
@@ -266,16 +275,20 @@ class Object(ParseResource):
         response_dict = self.__class__.PUT(uri, **self._attributes)
         self._updated_at = response_dict['updatedAt']
 
+
 class Push(ParseResource):
     ENDPOINT_ROOT = '/'.join([API_ROOT, 'push'])
 
     @classmethod
     def send(cls, message, channels=None, **kw):
-        alert_message = { 'alert': message }
+        alert_message = {'alert': message}
         targets = {}
-        if channels: targets['channels'] = channels
-        if kw: targets['where'] = kw
+        if channels:
+            targets['channels'] = channels
+        if kw:
+            targets['where'] = kw
         return cls.POST('', data=alert_message, **targets)
+
 
 class Query(ParseBase):
 
@@ -338,7 +351,8 @@ class Query(ParseBase):
             options.update({'where': where})
 
         response = self.__class__.GET('', **options)
-        return [self.__class__.QUERY_CLASS(**result) for result in response['results']]
+        return [self.__class__.QUERY_CLASS(**result)
+                    for result in response['results']]
 
 
 class ObjectQuery(Query):
@@ -359,7 +373,8 @@ class ObjectQuery(Query):
         # HTTP Verb: GET
 
         if self._object_id:
-            response = self.__class__.GET('/%s/%s' % (self._class_name, self._object_id))
+            response = self.__class__.GET('/%s/%s' % (self._class_name,
+                                                        self._object_id))
         else:
             options = dict(self._options)  # make a local copy
             if self._where:
@@ -372,7 +387,8 @@ class ObjectQuery(Query):
         if single_result:
             return Object(self._class_name, response)
         else:
-            return [Object(self._class_name, result) for result in response['results']]
+            return [Object(self._class_name, result)
+                        for result in response['results']]
 
 
 class UserQuery(Query):
@@ -391,6 +407,8 @@ class InstallationQuery(Query):
             where = json.dumps(self._where)
             options.update({'where': where})
 
-        extra_headers = {'X-Parse-Master-Key': MASTER_KEY }
-        response = self.__class__.GET('', extra_headers=extra_headers, **options)
-        return [self.__class__.QUERY_CLASS(**result) for result in response['results']]
+        extra_headers = {'X-Parse-Master-Key': MASTER_KEY}
+        response = self.__class__.GET('', extra_headers=extra_headers,
+                                        **options)
+        return [self.__class__.QUERY_CLASS(**result)
+                    for result in response['results']]
