@@ -1,12 +1,41 @@
 parse_rest
-=======
+==========
 
 **parse_rest** is a Python client for the [Parse REST API](https://www.parse.com/docs/rest). It provides Python object mapping for Parse objects with methods to save, update, and delete objects, as well as an interface for querying stored objects.
+
+Installation
+------------
+
+The easiest way to install this package is from [PyPI](http://pypi.python.org/pypi), either using [easy_install](http://packages.python.org/distribute/easy_install.html):
+
+    easy_install parse_rest
+
+or [pip](http://pypi.python.org/pypi/pip):
+
+    pip install parse_rest
+
+(if you are using a Mac or Linux system you may need to prepend `sudo` to either command).
+
+Alternatively, you can install it from source by downloading or cloning this repository:
+
+    git clone git@github.com:dgrtwo/ParsePy.git
+
+and performing the commands:
+
+    python setup.py build
+    python setup.py install
+
+(again you may have to add `sudo` before `python setup.py install`).
+
+You can then test the installation by running:
+
+    python setup.py test
+
 
 Basic Usage
 -----------
 
-Let's get everything set up first. You'll need to give **parse_rest** your _Application Id_ and _REST API Key_ (available from your Parse dashboard) in order to get access to your data.
+Let's get everything set up first. You'll need to give `parse_rest` your `_Application Id_` and `_REST API Key_` (available from your Parse dashboard) in order to get access to your data.
 
 ~~~~~ {python}
 >>> import parse_rest
