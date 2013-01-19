@@ -2,6 +2,8 @@
 Contains unit tests for the Python Parse REST API wrapper
 """
 
+import os
+import subprocess
 import unittest
 import urllib2
 import datetime
@@ -12,10 +14,28 @@ try:
     import settings_local
 except ImportError:
     raise ImportError('You must create a settings_local.py file with an ' +
-                      'example application to run tests')
+                      'APPLICATION_ID, REST_API_KEY, and a MASTER_KEY ' +
+                      'to run tests.')
 
 parse_rest.APPLICATION_ID = settings_local.APPLICATION_ID
 parse_rest.REST_API_KEY = settings_local.REST_API_KEY
+
+
+GLOBAL_JSON_TEXT = """{
+    "applications": {
+        "_default": {
+            "link": "parseapi"
+        },
+        "parseapi": {
+            "applicationId": "%s",
+            "masterKey": "%s"
+        }
+    },
+    "global": {
+        "parseVersion": "1.1.16"
+    }
+}
+"""
 
 
 ### FUNCTIONS ###
@@ -139,6 +159,50 @@ class TestObjectAndQuery(unittest.TestCase):
         o2.delete()
         self.assertRaises(urllib2.HTTPError,
                           parse_rest.ObjectQuery("GameScore").get, obj_id)
+
+
+class TestFunction(unittest.TestCase):
+    def setUp(self):
+        """create and deploy cloud functions"""
+        original_dir = os.getcwd()
+        cloud_function_dir = os.path.join(os.path.split(__file__)[0],
+                                          "cloudcode")
+        os.chdir(cloud_function_dir)
+        # write the config file
+        with open("config/global.json", "w") as outf:
+            outf.write(GLOBAL_JSON_TEXT % (settings_local.APPLICATION_ID,
+                                          settings_local.MASTER_KEY))
+        try:
+            subprocess.call(["parse", "deploy"])
+        except OSError:
+            raise OSError("parse command line tool must be installed " +
+                          "(see https://www.parse.com/docs/cloud_code_guide)")
+        os.chdir(original_dir)
+
+        # remove all existing Review objects
+        for review in parse_rest.ObjectQuery("Review").fetch():
+            review.delete()
+
+    def test_simple_functions(self):
+        """test hello world and averageStars functions"""
+        # test the hello function- takes no arguments
+        hello_world_func = parse_rest.Function("hello")
+        ret = hello_world_func()
+        self.assertEqual(ret["result"], u"Hello world!")
+
+        # Test the averageStars function- takes simple argument
+        r1 = parse_rest.Object("Review", {"movie": "The Matrix",
+                                          "stars": 5,
+                            "comment": "Too bad they never made any sequels."})
+        r1.save()
+        r2 = parse_rest.Object("Review", {"movie": "The Matrix",
+                                          "stars": 4,
+                            "comment": "It's OK."})
+        r2.save()
+
+        star_func = parse_rest.Function("averageStars")
+        ret = star_func(movie="The Matrix")
+        self.assertAlmostEqual(ret["result"], 4.5)
 
 
 if __name__ == "__main__":

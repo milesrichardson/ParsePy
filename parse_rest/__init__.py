@@ -37,7 +37,7 @@ class ParseBase(object):
     def execute(cls, uri, http_verb, extra_headers=None, **kw):
         headers = extra_headers or {}
         url = uri if uri.startswith(API_ROOT) else cls.ENDPOINT_ROOT + uri
-        data = kw and json.dumps(kw) or None
+        data = kw and json.dumps(kw) or "{}"
         if http_verb == 'GET' and data:
             url += '?%s' % urllib.urlencode(kw)
             data = None
@@ -111,6 +111,16 @@ class ParseBase(object):
                      'latitude': float(coordinates[1])}
 
         return (key, value)
+
+
+class Function(ParseBase):
+    ENDPOINT_ROOT = "/".join((API_ROOT, "functions"))
+
+    def __init__(self, name):
+        self.name = name
+
+    def __call__(self, **kwargs):
+        return self.POST("/" + self.name, **kwargs)
 
 
 class ParseResource(ParseBase):

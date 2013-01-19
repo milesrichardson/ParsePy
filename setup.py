@@ -14,10 +14,7 @@ class TestCommand(Command):
 
     def run(self):
         """Run test suite in parse_rest.tests"""
-        try:
-            from parse_rest import tests
-        except ImportError:
-            raise Exception("parse_rest is not installed, cannot run tests")
+        from parse_rest import tests
         tests = TestLoader().loadTestsFromNames(["parse_rest.tests"])
         t = TextTestRunner(verbosity=1)
         t.run(tests)

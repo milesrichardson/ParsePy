@@ -27,6 +27,21 @@ and performing the commands:
 
 (again you may have to add `sudo` before `python setup.py install`).
 
+Testing
+-------
+
+To run the tests, you need to:
+
+* create a `settings_local.py` file in your local directory with three variables that define a sample Parse application to use for testing:
+
+~~~~~ {python}
+APPLICATION_ID = "APPLICATION_ID_HERE"
+REST_API_KEY = "REST_API_KEY_HERE"
+MASTER_KEY = "MASTER_KEY_HERE"
+~~~~~
+
+* install the [Parse CloudCode command line tool](https://www.parse.com/docs/cloud_code_guide)
+
 You can then test the installation by running:
 
     python setup.py test
@@ -163,5 +178,48 @@ We can also order the results using:
 
 * **Order**
     * order(_parameter_name_, _decending_=False)
+
+Cloud Functions
+---------------
+
+Parse offers [CloudCode](https://www.parse.com/docs/cloud_code_guide), which has the ability to upload JavaScript functions that will be run on the server. You can use the `parse_rest` client to call those functions.
+
+The CloudCode guide describes how to upload a function to the server. Let's say you upload the following `main.js` script:
+
+~~~~~ {javascript}
+Parse.Cloud.define("hello", function(request, response) {
+  response.success("Hello world!");
+});
+
+
+Parse.Cloud.define("averageStars", function(request, response) {
+  var query = new Parse.Query("Review");
+  query.equalTo("movie", request.params.movie);
+  query.find({
+    success: function(results) {
+      var sum = 0;
+      for (var i = 0; i < results.length; ++i) {
+        sum += results[i].get("stars");
+      }
+      response.success(sum / results.length);
+    },
+    error: function() {
+      response.error("movie lookup failed");
+    }
+  });
+});
+~~~~~
+
+Then you can call either of these functions using the `parse_rest.Function` class:
+
+~~~~~ {python}
+>>> hello_func = parse_rest.Function("hello")
+>>> hello_func()
+{u'result': u'Hello world!'}
+>>> star_func = parse_rest.Function("averageStars")
+>>> star_func(movie="The Matrix")
+{u'result': 4.5}
+~~~~~
+
 
 That's it! This is a first try at a Python library for Parse, and is probably not bug-free. If you run into any issues, please get in touch -- dgrtwo@princeton.edu. Thanks!
