@@ -137,7 +137,7 @@ class ParseResource(ParseBase):
         return cls(**cls.GET('/' + resource_id))
 
     _absolute_url = property(lambda self: '/'.join(
-                             [self.__class__.ENDPOINT_ROOT + self._object_id]))
+                             [self.__class__.ENDPOINT_ROOT, self._object_id]))
 
     def objectId(self):
         return self._object_id
