@@ -205,6 +205,48 @@ class TestFunction(unittest.TestCase):
         self.assertAlmostEqual(ret["result"], 4.5)
 
 
+class TestUser(unittest.TestCase):
+    def setUp(self):
+        """remove the test user if he exists"""
+        u = parse_rest.User("dhelmet@spaceballs.com", "12345")
+        try:
+            u.login()
+            u.delete()
+        except parse_rest.ParseError as e:
+            # if the user doesn't exist, that's fine
+            if e.message != "Invalid login":
+                raise
+
+    def test_user(self):
+        """Test the ability to sign up, log in, and delete users"""
+        u = parse_rest.User("dhelmet@spaceballs.com", "12345")
+        u.signup()
+
+        # can't save or delete until it's logged in
+        self.assertRaises(parse_rest.ParseError, u.save, ())
+        self.assertRaises(parse_rest.ParseError, u.delete, ())
+
+        u.login()
+        self.assertTrue(hasattr(u, "sessionToken"))
+        self.assertNotEqual(u.sessionToken, None)
+
+        # add phone number and save
+        u.phone = "555-5555"
+        u.save()
+
+        uq = parse_rest.UserQuery()
+        u_retrieved = uq.get(u.objectId())
+        self.assertEqual(u.username, u_retrieved.username)
+        self.assertEqual(u_retrieved.phone, "555-5555")
+
+        # try creating another account with the same user
+        u2 = parse_rest.User("dhelmet@spaceballs.com", "12345")
+        self.assertRaises(parse_rest.ParseError, u2.signup)
+
+        # time to delete
+        u.delete()
+
+
 if __name__ == "__main__":
     # command line
     unittest.main()

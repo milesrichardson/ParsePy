@@ -42,7 +42,7 @@ class ParseBase(object):
             url += '?%s' % urllib.urlencode(kw)
             data = None
 
-        request = urllib2.Request(url, data)
+        request = urllib2.Request(url, data, headers)
         request.add_header('Content-type', 'application/json')
         #auth_header =  "Basic %s" % base64.b64encode('%s:%s' %
         #                            (APPLICATION_ID, REST_API_KEY))
@@ -149,32 +149,6 @@ class ParseResource(ParseBase):
     def createdAt(self):
         return (self._created_at and self._ISO8601ToDatetime(self._created_at)
                     or None)
-
-
-class User(ParseResource):
-    ENDPOINT_ROOT = '/'.join([API_ROOT, 'users'])
-
-    @classmethod
-    def signup(cls, username, password, **kw):
-        return cls.POST('', username=username, password=password, **kw)
-
-    @classmethod
-    def login(cls, username, password):
-        return cls.GET('/'.join([API_ROOT, 'login']), username=username,
-                            password=password)
-
-    @classmethod
-    def request_password_reset(cls, email):
-        return cls.POST('/'.join([API_ROOT, 'requestPasswordReset']),
-                         email=email)
-
-    def save(self, session=None):
-        session_header = {'X-Parse-Session-Token': session and
-                                                 session.get('sessionToken')}
-
-        return self.__class__.PUT(
-                            self._absolute_url, extra_headers=session_header,
-                            **self._attributes)
 
 
 class Installation(ParseResource):
@@ -284,6 +258,80 @@ class Object(ParseResource):
 
         response_dict = self.__class__.PUT(uri, **self._attributes)
         self._updated_at = response_dict['updatedAt']
+
+
+class User(Object):
+    """
+    A User is like a regular Parse object (can be modified and saved) but
+    it requires additional methods and functionality
+    """
+    ENDPOINT_ROOT = '/'.join([API_ROOT, 'users'])
+
+    def __init__(self, username, password=None, **kw):
+        """
+        Initialized with a username and possibly password along with any other
+        attributes (name, phone number...)
+        """
+        kw["username"] = username
+        kw["password"] = password
+        Object.__init__(self, "", kw)
+
+    @classmethod
+    def retrieve(cls, resource_id):
+        """retrieve a user by its ID"""
+        ret = cls.GET('/' + resource_id)
+        username = ret.pop("username")
+        return cls(username, **ret)
+
+    def needs_session(func):
+        """decorator describing User methods that need to be logged in"""
+        def ret(obj, *a, **kw):
+            if not hasattr(obj, "sessionToken"):
+                raise ParseError("%s requires a logged-in session" %
+                                    (func.__name__, ))
+            func(obj, *a, **kw)
+        return ret
+
+    def signup(self, **kw):
+        """same as creating an object, with handling if user already exists"""
+        try:
+            self._create()
+        except urllib2.HTTPError as e:
+            if "400" in str(e):
+                raise ParseError("User already exists")
+            else:
+                raise
+
+    def login(self):
+        try:
+            ret = self.GET('/'.join([API_ROOT, 'login']),
+                            username=self.username, password=self.password)
+        except urllib2.HTTPError:
+            raise ParseError("Invalid login")
+        # update all attributes
+        self._populateFromDict(ret)
+
+    @needs_session
+    def save(self):
+        session_header = {'X-Parse-Session-Token': self.sessionToken}
+        # remove items you can't change
+        save_dict = {k: v for k, v in self._attributes.items()
+                        if k not in ["username", "password", "sessionToken"]}
+
+        return self.__class__.PUT(
+                            self._absolute_url, extra_headers=session_header,
+                            **save_dict)
+
+    @needs_session
+    def delete(self):
+        session_header = {'X-Parse-Session-Token': self.sessionToken}
+        return self.DELETE("/" + self.objectId(), extra_headers=session_header)
+
+    @classmethod
+    def request_password_reset(cls, email):
+        """reset a user's password using his email"""
+        return self.POST('/'.join([API_ROOT, 'requestPasswordReset']),
+                         email=email)
 
 
 class Push(ParseResource):
@@ -405,6 +453,10 @@ class UserQuery(Query):
     ENDPOINT_ROOT = '/'.join([API_ROOT, 'users'])
     QUERY_CLASS = User
 
+    def __init__(self):
+        """UserQuery doesn't need a class name to be passed"""
+        pass
+
 
 class InstallationQuery(Query):
     ENDPOINT_ROOT = '/'.join([API_ROOT, 'installations'])
@@ -422,3 +474,10 @@ class InstallationQuery(Query):
                                         **options)
         return [self.__class__.QUERY_CLASS(**result)
                     for result in response['results']]
+
+
+class ParseError(Exception):
+    """
+    Represents exceptions coming from Parse (e.g. invalid login or signup)
+    """
+    pass
