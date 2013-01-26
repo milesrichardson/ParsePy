@@ -61,7 +61,7 @@ Let's get everything set up first. You'll need to give `parse_rest` your `_Appli
 To create a new object of the Parse class _GameScore_:
 
 ~~~~~ {python}
->>> gameScore = parse.Object("GameScore")
+>>> gameScore = parse_rest.Object("GameScore")
 >>> gameScore.score = 1337
 >>> gameScore.playerName = "Sean Plott"
 >>> gameScore.cheatMode = False
@@ -116,13 +116,13 @@ Additional Datatypes
 If we want to store data in a Object, we should wrap it in a ParseBinaryDataWrapper. The ParseBinaryDataWrapper behaves just like a string, and inherits all of _str_'s methods.
 
 ~~~~~ {python}
->>> gameScore.victoryImage = parse.ParseBinaryDataWrapper('\x03\xf3\r\n\xc7\x81\x7fNc ... ')
+>>> gameScore.victoryImage = parse_rest.ParseBinaryDataWrapper('\x03\xf3\r\n\xc7\x81\x7fNc ... ')
 ~~~~~
 
 We can store a reference to another Object by assigning it to an attribute:
 
 ~~~~~ {python}
->>> collectedItem = parse.Object("CollectedItem")
+>>> collectedItem = parse_rest.Object("CollectedItem")
 >>> collectedItem.type = "Sword"
 >>> collectedItem.isAwesome = True
 >>> collectedItem.save() # we have to save it before it can be referenced
@@ -133,7 +133,7 @@ We can store a reference to another Object by assigning it to an attribute:
 We can also store geoPoint dataTypes as attributes using the format <code>'POINT(longitude latitude)'</code>, with latitude and longitude as float values
 
 ~~~~~ {python}
->>> restaurant = parse.Object("Restaurant")
+>>> restaurant = parse_rest.Object("Restaurant")
 >>> restaurant.name = "Los Pollos Hermanos"
 >>> restaurant.location ="POINT(12.0 -34.45)"
 >>> restaurant.save()
@@ -146,13 +146,13 @@ Querying
 To retrieve an object with a Parse class of _GameScore_ and an _objectId_ of _xxwXx9eOec_, run:
 
 ~~~~~ {python}
->>> gameScore = parse.ObjectQuery("GameScore").get("xxwXx9eOec")
+>>> gameScore = parse_rest.ObjectQuery("GameScore").get("xxwXx9eOec")
 ~~~~~
 
 We can also run more complex queries to retrieve a range of objects. For example, if we want to get a list of _GameScore_ objects with scores between 1000 and 2000 ordered by _playerName_, we would call:
 
 ~~~~~ {python}
->>> query = parse.ObjectQuery("GameScore")
+>>> query = parse_rest.ObjectQuery("GameScore")
 >>> query = query.gte("score", 1000).lt("score", 2000).order("playerName")
 >>> GameScores = query.fetch()
 ~~~~~
@@ -178,6 +178,26 @@ We can also order the results using:
 
 * **Order**
     * order(_parameter_name_, _decending_=False)
+
+Users
+-----
+
+You can sign up, log in, modify or delete users as well, using the `User` object. Initialize it with a username and password, as well as any optional parameters.
+
+~~~~~ {python}
+>>> u = parse_rest.User("dhelmet", "12345", phone="555-555-5555")
+>>> u.signup()
+>>> u.login()
+~~~~~
+
+Once a `User` has been logged in, it saves its session so that it can be edited or deleted:
+
+~~~~~ {python}
+>>> u.highscore = 300
+>>> u.save()
+>>> u.delete()
+~~~~~
+
 
 Cloud Functions
 ---------------

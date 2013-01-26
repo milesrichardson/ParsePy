@@ -42,6 +42,10 @@ class ParseBase(object):
             url += '?%s' % urllib.urlencode(kw)
             data = None
 
+        if APPLICATION_ID == "" or REST_API_KEY == "":
+            raise ParseError("Must set parse_rest.APPLICATION_ID and " +
+                             "parse_rest.REST_API_KEY")
+
         request = urllib2.Request(url, data, headers)
         request.add_header('Content-type', 'application/json')
         #auth_header =  "Basic %s" % base64.b64encode('%s:%s' %
