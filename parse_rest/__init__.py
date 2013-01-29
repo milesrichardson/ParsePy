@@ -204,6 +204,26 @@ class Object(ParseResource):
     def remove(self, attr):
         self.__dict__.pop(attr)
 
+    # dictionary and list-like methods
+    def __contains__(self, k):
+        return not k.startswith("_") and k in self.__dict__
+
+    def __iter__(self):
+        return (k for k in self.__dict__ if not k.startswith("_"))
+
+    def __getitem__(self, key):
+        if key.startswith("_"):
+            raise KeyError("Cannot access this value in this way")
+        return self.__dict__[key]
+
+    def __setitem__(self, key, value):
+        if key.startswith("_"):
+            raise KeyError("Cannot change this value in this way")
+        self.__dict__[key] = value
+
+    def items(self):
+        return self._attributes.items()
+
     def refresh(self):
         uri = '/%s/%s' % (self._class_name, self._object_id)
         response_dict = self.__class__.execute(uri, 'GET')

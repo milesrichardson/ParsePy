@@ -88,6 +88,17 @@ class TestObjectAndQuery(unittest.TestCase):
         self.assertGreater(obj1.updatedAt(), current_updated)
         self.assertEqual(obj1.score, 1000)
 
+        # test accessing like a dictionary
+        self.assertTrue("playerName" in obj1)
+        self.assertTrue("score" in obj1)
+        self.assertEqual(obj1["score"], 1000)
+        self.assertEqual(obj1["playerName"], "Sean Plott")
+        obj1["playerName"] = "Sean Scott"
+        self.assertEqual(obj1.playerName, "Sean Scott")
+        # non-existent or forbidden lookup
+        self.assertRaises(KeyError, obj1.__getitem__, "nosuchkey")
+        self.assertRaises(KeyError, obj1.__getitem__, "_class_name")
+
         # re-retrieve it
         obj2 = query.get(obj1.objectId())
         self.assertEqual(obj2.score, 1000)
@@ -238,6 +249,10 @@ class TestUser(unittest.TestCase):
         u_retrieved = uq.get(u.objectId())
         self.assertEqual(u.username, u_retrieved.username)
         self.assertEqual(u_retrieved.phone, "555-5555")
+
+        # test accessing like a dictionary
+        self.assertEqual(u_retrieved["username"], "dhelmet@spaceballs.com")
+        self.assertEqual(u_retrieved["phone"], "555-5555")
 
         # try creating another account with the same user
         u2 = parse_rest.User("dhelmet@spaceballs.com", "12345")
