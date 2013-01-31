@@ -250,6 +250,10 @@ class TestUser(unittest.TestCase):
         self.assertEqual(u.username, u_retrieved.username)
         self.assertEqual(u_retrieved.phone, "555-5555")
 
+        # test UserQuery.fetch
+        queried_users = uq.fetch()
+        self.assertTrue(u.username in [qu.username for qu in queried_users])
+
         # test accessing like a dictionary
         self.assertEqual(u_retrieved["username"], "dhelmet@spaceballs.com")
         self.assertEqual(u_retrieved["phone"], "555-5555")

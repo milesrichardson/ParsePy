@@ -477,10 +477,6 @@ class UserQuery(Query):
     ENDPOINT_ROOT = '/'.join([API_ROOT, 'users'])
     QUERY_CLASS = User
 
-    def __init__(self):
-        """UserQuery doesn't need a class name to be passed"""
-        pass
-
 
 class InstallationQuery(Query):
     ENDPOINT_ROOT = '/'.join([API_ROOT, 'installations'])
