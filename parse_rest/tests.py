@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+#-*- coding: utf-8 -*-
+
 """
 Contains unit tests for the Python Parse REST API wrapper
 """
@@ -9,6 +12,9 @@ import urllib2
 import datetime
 
 import __init__ as parse_rest
+from __init__ import GeoPoint, Object
+from user import User
+
 
 try:
     import settings_local
@@ -17,9 +23,9 @@ except ImportError:
                       'APPLICATION_ID, REST_API_KEY, and a MASTER_KEY ' +
                       'to run tests.')
 
-parse_rest.APPLICATION_ID = settings_local.APPLICATION_ID
-parse_rest.REST_API_KEY = settings_local.REST_API_KEY
-
+parse_rest.APPLICATION_ID = getattr(settings_local, 'APPLICATION_ID', '')
+parse_rest.REST_API_KEY = getattr(settings_local, 'REST_API_KEY', '')
+parse_rest.MASTER_KEY = getattr(settings_local, 'MASTER_KEY', '')
 
 GLOBAL_JSON_TEXT = """{
     "applications": {
@@ -38,140 +44,68 @@ GLOBAL_JSON_TEXT = """{
 """
 
 
-### FUNCTIONS ###
-def test_obj(saved=False):
-    """Return a test parse_rest.Object (content is from the docs)"""
-    ret = parse_rest.Object("GameScore")
-    ret.score = 1337
-    ret.playerName = "Sean Plott"
-    ret.cheatMode = False
-    ret.location = "POINT(-30.0 43.21)"  # "POINT(30 -43.21)"
-    if saved:
-        ret.save()
-    return ret
+class GameScore(Object):
+    pass
 
 
-### CLASSES ###
-class TestObjectAndQuery(unittest.TestCase):
-    """
-    Tests for the parse_rest.Object interface for creating and updating Parse
-    objects, as well as the parse_rest.ObjectQuery interface for retrieving
-    them
-    """
-
-    def check_test_obj(self, o):
-        """check that the object is consistent with the test object"""
-        self.assertEqual(o.objectId().__class__, unicode)
-        self.assertEqual(o.updatedAt().__class__, datetime.datetime)
-        self.assertEqual(o.createdAt().__class__, datetime.datetime)
-        self.assertEqual(o.score, 1337)
-        # TODO: str vs unicode
-        #self.assertEqual(o.playerName.__class__, unicode)
-        self.assertEqual(o.cheatMode.__class__, bool)
-        self.assertEqual(o.location, "POINT(-30.0 43.21)")
-
-    def test_object(self):
-        """Test the creation, retrieval and updating of a Object"""
-        gameScore = test_obj()
-        gameScore.save()
-        self.check_test_obj(gameScore)
-
-        # retrieve a new one
-        query = parse_rest.ObjectQuery('GameScore')
-        obj1 = query.get(gameScore.objectId())
-        self.check_test_obj(obj1)
-
-        # now update it
-        current_updated = obj1.updatedAt()
-        obj1.score = 1000
-        obj1.save()
-        self.assertGreater(obj1.updatedAt(), current_updated)
-        self.assertEqual(obj1.score, 1000)
-
-        # test accessing like a dictionary
-        self.assertTrue("playerName" in obj1)
-        self.assertTrue("score" in obj1)
-        self.assertEqual(obj1["score"], 1000)
-        self.assertEqual(obj1["playerName"], "Sean Plott")
-        obj1["playerName"] = "Sean Scott"
-        self.assertEqual(obj1.playerName, "Sean Scott")
-        # non-existent or forbidden lookup
-        self.assertRaises(KeyError, obj1.__getitem__, "nosuchkey")
-        self.assertRaises(KeyError, obj1.__getitem__, "_class_name")
-
-        # re-retrieve it
-        obj2 = query.get(obj1.objectId())
-        self.assertEqual(obj2.score, 1000)
-
-        # change one object, check that others can be refreshed
-        obj2.score = 2000
-        obj2.save()
-
-        self.assertEqual(obj1.score, 1000)
-        obj1.refresh()
-        self.assertEqual(obj1.score, 2000)
-
-        # try removing a field
-        obj2.remove("score")
-        obj2.save()
-        self.assertEqual(obj2.has("score"), False)
-
-    def test_increment(self):
-        """Test incrementation of fields"""
-        o = test_obj(True)
-        self.check_test_obj(o)
-        o.save()
-
-        o.increment("score")
-        self.assertEqual(o.score, 1338)
-
-        query = parse_rest.ObjectQuery("GameScore")
-        o2 = query.get(o.objectId())
-        self.assertEqual(o2.score, 1338)
-
-        # one more time
-        o.increment("score")
-        self.assertEqual(o.score, 1339)
-        o3 = query.get(o.objectId())
-        self.assertEqual(o3.score, 1339)
-
-    def test_relationship(self):
-        """Test relationship between objects"""
-        post = parse_rest.Object("Post")
-        post.title = "I'm Hungry"
-        post.content = "Where should we go for lunch?"
-        post.save()
-
-        comment = parse_rest.Object("Comment")
-        comment.content = "Let's do Sushirrito"
-        comment.parent = post
-        comment.save()
-
-        # that should have saved both post and comment
-        post_id = post.objectId()
-        comment_id = comment.objectId()
-        self.assertEqual(post_id.__class__, unicode)
-        self.assertEqual(comment_id.__class__, unicode)
-
-        # retrieve new ones
-        post2 = parse_rest.ObjectQuery("Post").get(post_id)
-        comment2 = parse_rest.ObjectQuery("Comment").get(comment_id)
-        # check the relationship between the saved post and comment
-        self.assertEqual(comment2.parent.objectId(), post_id)
-        self.assertEqual(comment2.parent.title, "I'm Hungry")
-
-    def test_delete(self):
-        """Test deleting an object"""
-        o = test_obj(True)
-        obj_id = o.objectId()
-        self.check_test_obj(o)
-        o2 = parse_rest.ObjectQuery("GameScore").get(obj_id)
-        self.check_test_obj(o2)
-        o2.delete()
-        self.assertRaises(urllib2.HTTPError,
-                          parse_rest.ObjectQuery("GameScore").get, obj_id)
+class City(Object):
+    pass
 
 
+class TestObject(unittest.TestCase):
+    def setUp(self):
+        self.score = GameScore(
+            score=1337, player_name='John Doe', cheat_mode=False
+            )
+        self.sao_paulo = City(
+            name='São Paulo', location=GeoPoint(-23.5, -46.6167)
+            )
+
+    def tearDown(self):
+        city_name = getattr(self.sao_paulo, 'name', None)
+        game_score = getattr(self.score, 'score', None)
+        if city_name:
+            for city in City.Query.where(name=city_name):
+                city.delete()
+
+        if game_score:
+            for score in GameScore.Query.where(score=game_score):
+                score.delete()
+
+    def testCanInitialize(self):
+        self.assert_(self.score.score == 1337, 'Could not set score')
+
+    def testCanInstantiateParseType(self):
+        self.assert_(self.sao_paulo.location.latitude == -23.5)
+
+    def testCanCreateNewObject(self):
+        self.score.save()
+        self.assert_(self.score.objectId is not None, 'Can not create object')
+
+    def testCanUpdateExistingObject(self):
+        self.sao_paulo.save()
+        self.sao_paulo.country = 'Brazil'
+        self.sao_paulo.save()
+
+        city = City.Query.where(name='São Paulo').get()
+        self.assert_(city.country == 'Brazil', 'Could not update object')
+
+    def testCanDeleteExistingObject(self):
+        self.score.save()
+        object_id = self.score.objectId
+        self.score.delete()
+        self.assert_(not GameScore.Query.where(objectId=object_id).exists(),
+                     'Failed to delete object %s on Parse ' % self.score)
+
+    def testCanIncrementField(self):
+        previous_score = self.score.score
+        self.score.save()
+        self.score.increment('score')
+        self.assert_(GameScore.Query.where(score=previous_score + 1).exists(),
+                     'Failed to increment score on backend')
+
+
+@unittest.skip("Skipping")
 class TestFunction(unittest.TestCase):
     def setUp(self):
         """create and deploy cloud functions"""
@@ -182,7 +116,7 @@ class TestFunction(unittest.TestCase):
         # write the config file
         with open("config/global.json", "w") as outf:
             outf.write(GLOBAL_JSON_TEXT % (settings_local.APPLICATION_ID,
-                                          settings_local.MASTER_KEY))
+                                           settings_local.MASTER_KEY))
         try:
             subprocess.call(["parse", "deploy"])
         except OSError:
@@ -202,13 +136,17 @@ class TestFunction(unittest.TestCase):
         self.assertEqual(ret["result"], u"Hello world!")
 
         # Test the averageStars function- takes simple argument
-        r1 = parse_rest.Object("Review", {"movie": "The Matrix",
-                                          "stars": 5,
-                            "comment": "Too bad they never made any sequels."})
+        r1 = parse_rest.Object(
+            "Review", {
+                "movie": "The Matrix",
+                "stars": 5,
+                "comment": "Too bad they never made any sequels."})
         r1.save()
-        r2 = parse_rest.Object("Review", {"movie": "The Matrix",
-                                          "stars": 4,
-                            "comment": "It's OK."})
+        r2 = parse_rest.Object(
+            "Review", {
+                "movie": "The Matrix",
+                "stars": 4,
+                "comment": "It's OK."})
         r2.save()
 
         star_func = parse_rest.Function("averageStars")
@@ -217,50 +155,60 @@ class TestFunction(unittest.TestCase):
 
 
 class TestUser(unittest.TestCase):
-    def setUp(self):
-        """remove the test user if he exists"""
-        u = parse_rest.User("dhelmet@spaceballs.com", "12345")
+    USERNAME = "dhelmet@spaceballs.com"
+    PASSWORD = "12345"
+
+    def _get_user(self):
         try:
-            u.login()
-            u.delete()
-        except parse_rest.ParseError as e:
-            # if the user doesn't exist, that's fine
-            if e.message != "Invalid login":
-                raise
+            user = User.signup(self.username, self.password)
+        except:
+            user = User.Query.get(username=self.username)
+        return user
 
-    def test_user(self):
-        """Test the ability to sign up, log in, and delete users"""
-        u = parse_rest.User("dhelmet@spaceballs.com", "12345")
-        u.signup()
+    def _destroy_user(self):
+        user = self._get_logged_user()
+        user and user.delete()
 
-        # can't save or delete until it's logged in
-        self.assertRaises(parse_rest.ParseError, u.save, ())
-        self.assertRaises(parse_rest.ParseError, u.delete, ())
+    def _get_logged_user(self):
+        if User.Query.where(username=self.username).exists():
+            return User.login(self.username, self.password)
+        else:
+            return self._get_user()
 
-        u.login()
-        self.assertTrue(hasattr(u, "sessionToken"))
-        self.assertNotEqual(u.sessionToken, None)
+    def setUp(self):
+        self.username = TestUser.USERNAME
+        self.password = TestUser.PASSWORD
+
+    def tearDown(self):
+        self._destroy_user()
+
+    def testCanSignUp(self):
+        self._destroy_user()
+        user = User.signup(self.username, self.password)
+        self.assert_(user is not None)
+
+    def testCanLogin(self):
+        self._get_user()  # User should be created here.
+        user = User.login(self.username, self.password)
+        self.assert_(user.is_authenticated(), 'Login failed')
+
+    def testCanUpdate(self):
+        user = self._get_logged_user()
+        phone_number = '555-5555'
 
         # add phone number and save
-        u.phone = "555-5555"
-        u.save()
+        user.phone = phone_number
+        user.save()
 
-        uq = parse_rest.UserQuery()
-        u_retrieved = uq.get(u.objectId())
-        self.assertEqual(u.username, u_retrieved.username)
-        self.assertEqual(u_retrieved.phone, "555-5555")
+        self.assert_(User.Query.where(phone=phone_number).exists(),
+                     'Failed to update user data. New info not on Parse')
 
-        # test accessing like a dictionary
-        self.assertEqual(u_retrieved["username"], "dhelmet@spaceballs.com")
-        self.assertEqual(u_retrieved["phone"], "555-5555")
-
-        # try creating another account with the same user
-        u2 = parse_rest.User("dhelmet@spaceballs.com", "12345")
-        self.assertRaises(parse_rest.ParseError, u2.signup)
-
-        # time to delete
-        u.delete()
-
+    def testCanQueryBySession(self):
+        User.signup(self.username, self.password)
+        logged = User.login(self.username, self.password)
+        queried = User.Query.where(sessionToken=logged.sessionToken).get()
+        self.assert_(queried.objectId == logged.objectId,
+                     'Could not find user %s by session' % logged.username)
 
 if __name__ == "__main__":
     # command line
