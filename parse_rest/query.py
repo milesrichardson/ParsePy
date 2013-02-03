@@ -54,7 +54,8 @@ class Queryset(object):
         yield self._results.pop(0)
 
     def where(self, **kw):
-        for key, value in kw.items(): self.eq(key, value)
+        for key, value in kw.items():
+            self.eq(key, value)
         return self
 
     def eq(self, name, value):
@@ -102,8 +103,10 @@ class Queryset(object):
 
     def get(self):
         results = self._fetch()
-        if len(results) == 0: raise QueryResourceDoesNotExist
-        if len(results) >= 2: raise QueryResourceMultipleResultsReturned
+        if len(results) == 0:
+            raise QueryResourceDoesNotExist
+        if len(results) >= 2:
+            raise QueryResourceMultipleResultsReturned
         return results[0]
 
     def _fetch(self):

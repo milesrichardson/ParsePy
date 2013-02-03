@@ -35,7 +35,8 @@ class ParseType(object):
     @staticmethod
     def convert(parse_data):
         is_parse_type = isinstance(parse_data, dict) and '__type' in parse_data
-        if not is_parse_type: return parse_data
+        if not is_parse_type:
+            return parse_data
 
         parse_type = parse_data['__type']
         native = {
@@ -211,7 +212,8 @@ class ParseResource(ParseBase):
         return cls(**cls.GET('/' + resource_id))
 
     def __init__(self, **kw):
-        for key, value in kw.items(): setattr(self, key, value)
+        for key, value in kw.items():
+            setattr(self, key, value)
 
     def _to_native(self):
         # serializes all attributes that need to be persisted on Parse
@@ -228,7 +230,7 @@ class ParseResource(ParseBase):
 
     def _set_object_id(self, value):
         if hasattr(self, '_object_id'):
-            raise ValueError, 'Can not re-set object id'
+            raise ValueError('Can not re-set object id')
         self._object_id = value
 
     def _get_updated_datetime(self):
@@ -263,7 +265,7 @@ class ParseResource(ParseBase):
     def _update(self):
         # URL: /1/classes/<className>/<objectId>
         # HTTP Verb: PUT
-        
+
         response = self.__class__.PUT(self._absolute_url, **self._to_native())
         self.updatedAt = response['updatedAt']
 
@@ -286,7 +288,8 @@ class Object(ParseResource):
 
     @classmethod
     def factory(cls, class_name):
-        class DerivedClass(cls): pass
+        class DerivedClass(cls):
+            pass
         DerivedClass.__name__ = class_name
         return DerivedClass
 
@@ -306,7 +309,8 @@ class Object(ParseResource):
 
     @property
     def _absolute_url(self):
-        if not self.objectId: return None
+        if not self.objectId:
+            return None
 
         return '/'.join([self.__class__.ENDPOINT_ROOT, self.objectId])
 

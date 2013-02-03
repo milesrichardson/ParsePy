@@ -56,12 +56,14 @@ class User(ParseResource):
 
     @staticmethod
     def signup(username, password, **kw):
-        return User(**User.POST('', username=username, password=password, **kw))
+        return User(**User.POST('', username=username, password=password,
+                                **kw))
 
     @staticmethod
     def login(username, password):
         login_url = '/'.join([API_ROOT, 'login'])
-        return User(**User.GET(login_url, username=username, password=password))
+        return User(**User.GET(login_url, username=username,
+                                password=password))
 
     @staticmethod
     def request_password_reset(email):
