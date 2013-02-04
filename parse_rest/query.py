@@ -47,11 +47,7 @@ class Queryset(object):
         self._options = {}
 
     def __iter__(self):
-        results = getattr(self, '_results', self._fetch())
-        self._results = results
-        if len(self._results) == 0:
-            raise StopIteration
-        yield self._results.pop(0)
+        return iter(self._fetch())
 
     def where(self, **kw):
         for key, value in kw.items():

@@ -282,8 +282,16 @@ class ParseResource(ParseBase):
     updatedAt = property(_get_updated_datetime, _set_created_datetime)
 
 
-class Object(ParseResource):
+class ObjectMetaclass(type):
+    def __new__(cls, name, bases, dct):
+        cls = super(ObjectMetaclass, cls).__new__(cls, name, bases, dct)
+        cls.set_endpoint_root()
+        cls.Query = QueryManager(cls)
+        return cls
 
+
+class Object(ParseResource):
+    __metaclass__ = ObjectMetaclass
     ENDPOINT_ROOT = '/'.join([API_ROOT, 'classes'])
 
     @classmethod

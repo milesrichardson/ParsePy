@@ -52,6 +52,10 @@ class City(Object):
     pass
 
 
+class Review(Object):
+    pass
+
+
 class TestObject(unittest.TestCase):
     def setUp(self):
         self.score = GameScore(
@@ -105,7 +109,6 @@ class TestObject(unittest.TestCase):
                      'Failed to increment score on backend')
 
 
-@unittest.skip("Skipping")
 class TestFunction(unittest.TestCase):
     def setUp(self):
         """create and deploy cloud functions"""
@@ -124,8 +127,8 @@ class TestFunction(unittest.TestCase):
                           "(see https://www.parse.com/docs/cloud_code_guide)")
         os.chdir(original_dir)
 
-        # remove all existing Review objects
-        for review in parse_rest.ObjectQuery("Review").fetch():
+    def tearDown(self):
+        for review in Review.Query.all():
             review.delete()
 
     def test_simple_functions(self):
@@ -136,17 +139,10 @@ class TestFunction(unittest.TestCase):
         self.assertEqual(ret["result"], u"Hello world!")
 
         # Test the averageStars function- takes simple argument
-        r1 = parse_rest.Object(
-            "Review", {
-                "movie": "The Matrix",
-                "stars": 5,
-                "comment": "Too bad they never made any sequels."})
+        r1 = Review(movie="The Matrix", stars=5,
+                    comment="Too bad they never made any sequels.")
         r1.save()
-        r2 = parse_rest.Object(
-            "Review", {
-                "movie": "The Matrix",
-                "stars": 4,
-                "comment": "It's OK."})
+        r2 = Review(movie="The Matrix", stars=4, comment="It's OK.")
         r2.save()
 
         star_func = parse_rest.Function("averageStars")
@@ -178,6 +174,13 @@ class TestUser(unittest.TestCase):
     def setUp(self):
         self.username = TestUser.USERNAME
         self.password = TestUser.PASSWORD
+
+        try:
+            u = User.login(self.USERNAME, self.PASSWORD)
+        except parse_rest.ResourceRequestNotFound as e:
+            # if the user doesn't exist, that's fine
+            return
+        u.delete()
 
     def tearDown(self):
         self._destroy_user()
