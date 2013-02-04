@@ -20,14 +20,125 @@ import collections
 import re
 import logging
 
+
+from query import QueryManager
+
 API_ROOT = 'https://api.parse.com/1'
 
 APPLICATION_ID = ''
 REST_API_KEY = ''
+MASTER_KEY = ''
 
 
-class ParseBinaryDataWrapper(str):
-    pass
+class ParseType(object):
+
+    @staticmethod
+    def convert(parse_data):
+        is_parse_type = isinstance(parse_data, dict) and '__type' in parse_data
+        if not is_parse_type:
+            return parse_data
+
+        parse_type = parse_data['__type']
+        native = {
+            'Pointer': Pointer,
+            'Date': Date,
+            'Bytes': Binary,
+            'GeoPoint': GeoPoint,
+            'File': File,
+            'Relation': Relation
+            }.get(parse_type)
+
+        return native and native.from_native(**parse_data) or parse_data
+
+    @classmethod
+    def from_native(cls, **kw):
+        return cls(**kw)
+
+    def _to_native(self):
+        return self._value
+
+
+class Pointer(ParseType):
+
+    @classmethod
+    def from_native(cls, **kw):
+        klass = Object.factory(kw.get('className'))
+        return klass.retrieve(kw.get('objectId'))
+
+    def _to_native(self):
+        return {
+            '__type': 'Pointer',
+            'className': self.__class__.__name__,
+            'objectId': self.objectId
+            }
+
+
+class Relation(ParseType):
+    @classmethod
+    def from_native(cls, **kw):
+        pass
+
+
+class Date(ParseType):
+    FORMAT = '%Y-%m-%dT%H:%M:%S.%f%Z'
+
+    @classmethod
+    def from_native(cls, **kw):
+        date_str = kw.get('iso', '')[:-1] + 'UTC'
+        return cls(datetime.datetime.strptime(date_str, Date.FORMAT))
+
+    def __init__(self, date):
+        self._date = date
+
+    def _to_native(self):
+        return {
+            '__type': 'Date', 'iso': self._date.isoformat()
+            }
+
+
+class Binary(ParseType):
+
+    @classmethod
+    def from_native(self, **kw):
+        return cls(kw.get('base64', ''))
+
+    def __init__(self, encoded_string):
+        self._encoded = encoded_string
+        self._decoded = str(base64.b64decode(self._encoded))
+
+    def _to_native(self):
+        return {'__type': 'Bytes', 'base64': self._encoded}
+
+
+class GeoPoint(ParseType):
+
+    @classmethod
+    def from_native(self, **kw):
+        return cls(kw.get('latitude'), kw.get('longitude'))
+
+    def __init__(self, latitude, longitude):
+        self.latitude = latitude
+        self.longitude = longitude
+
+    def _to_native(self):
+        return {
+            '__type': 'GeoPoint',
+            'latitude': self.latitude,
+            'longitude': self.longitude
+            }
+
+
+class File(ParseType):
+
+    @classmethod
+    def from_native(self, **kw):
+        return cls(kw.get('url'), kw.get('name'))
+
+    def __init__(self, url, name):
+        request = urllib2.Request(url)
+        self._name = name
+        self._url = url
+        self._file = urllib2.urlopen(request)
 
 
 class ParseBase(object):
@@ -48,16 +159,21 @@ class ParseBase(object):
 
         request = urllib2.Request(url, data, headers)
         request.add_header('Content-type', 'application/json')
-        #auth_header =  "Basic %s" % base64.b64encode('%s:%s' %
-        #                            (APPLICATION_ID, REST_API_KEY))
-        #request.add_header("Authorization", auth_header)
         request.add_header("X-Parse-Application-Id", APPLICATION_ID)
         request.add_header("X-Parse-REST-API-Key", REST_API_KEY)
 
         request.get_method = lambda: http_verb
 
-        # TODO: add error handling for server response
-        response = urllib2.urlopen(request)
+        try:
+            response = urllib2.urlopen(request)
+        except urllib2.HTTPError, e:
+            raise {
+                400: ResourceRequestBadRequest,
+                401: ResourceRequestLoginRequired,
+                403: ResourceRequestForbidden,
+                404: ResourceRequestNotFound
+                }.get(e.code, ParseError)
+
         return json.loads(response.read())
 
     @classmethod
@@ -76,46 +192,6 @@ class ParseBase(object):
     def DELETE(cls, uri, **kw):
         return cls.execute(uri, 'DELETE', **kw)
 
-    @property
-    def _attributes(self):
-        # return "public" attributes converted to the base parse representation
-        return dict([
-                self._convertToParseType(p) for p in self.__dict__.items()
-                if p[0][0] != '_'
-                ])
-
-    def _isGeoPoint(self, value):
-        if isinstance(value, str):
-            return re.search('\\bPOINT\\(([-+]?[0-9]*\\.?[0-9]*) ' +
-                             '([-+]?[0-9]*\\.?[0-9]*)\\)', value, re.I)
-
-    def _ISO8601ToDatetime(self, date_string):
-        # TODO: verify correct handling of timezone
-        date_string = date_string[:-1] + 'UTC'
-        return datetime.datetime.strptime(date_string,
-                                            '%Y-%m-%dT%H:%M:%S.%f%Z')
-
-    def _convertToParseType(self, prop):
-        key, value = prop
-
-        if type(value) == Object:
-            value = {'__type': 'Pointer',
-                    'className': value._class_name,
-                    'objectId': value._object_id}
-        elif type(value) == datetime.datetime:
-            # take off the last 3 digits and add a Z
-            value = {'__type': 'Date', 'iso': value.isoformat()[:-3] + 'Z'}
-        elif type(value) == ParseBinaryDataWrapper:
-            value = {'__type': 'Bytes',
-                    'base64': base64.b64encode(value)}
-        elif self._isGeoPoint(value):
-            coordinates = re.findall('[-+]?[0-9]+\\.?[0-9]*', value)
-            value = {'__type': 'GeoPoint',
-                     'longitude': float(coordinates[0]),
-                     'latitude': float(coordinates[1])}
-
-        return (key, value)
-
 
 class Function(ParseBase):
     ENDPOINT_ROOT = "/".join((API_ROOT, "functions"))
@@ -128,376 +204,159 @@ class Function(ParseBase):
 
 
 class ParseResource(ParseBase):
-    def __init__(self, **kw):
-        self._object_id = kw.pop('objectId', None)
-        self._updated_at = kw.pop('updatedAt', None)
-        self._created_at = kw.pop('createdAt', None)
 
-        for attr, value in kw.items():
-            self.__dict__[attr] = value
+    PROTECTED_ATTRIBUTES = ['objectId', 'createdAt', 'updatedAt']
 
     @classmethod
     def retrieve(cls, resource_id):
         return cls(**cls.GET('/' + resource_id))
 
-    _absolute_url = property(lambda self: '/'.join(
-                             [self.__class__.ENDPOINT_ROOT, self._object_id]))
+    def __init__(self, **kw):
+        for key, value in kw.items():
+            setattr(self, key, value)
 
-    def objectId(self):
-        return self._object_id
+    def _to_native(self):
+        # serializes all attributes that need to be persisted on Parse
 
-    def updatedAt(self):
-        return (self._updated_at and self._ISO8601ToDatetime(self._updated_at)
-                    or None)
+        protected_attributes = self.__class__.PROTECTED_ATTRIBUTES
+        is_protected = lambda a: a in protected_attributes or a.startswith('_')
 
-    def createdAt(self):
-        return (self._created_at and self._ISO8601ToDatetime(self._created_at)
-                    or None)
+        return dict([(k, v._to_native() if isinstance(v, ParseType) else v)
+                     for k, v in self.__dict__.items() if not is_protected(k)
+                     ])
 
+    def _get_object_id(self):
+        return getattr(self, '_object_id', None)
 
-class Installation(ParseResource):
-    ENDPOINT_ROOT = '/'.join([API_ROOT, 'installations'])
+    def _set_object_id(self, value):
+        if hasattr(self, '_object_id'):
+            raise ValueError('Can not re-set object id')
+        self._object_id = value
 
+    def _get_updated_datetime(self):
+        return getattr(self, '_updated_at', None) and self._updated_at._date
 
-class Object(ParseResource):
-    ENDPOINT_ROOT = '/'.join([API_ROOT, 'classes'])
+    def _set_updated_datetime(self, value):
+        self._updated_at = Date(value)
 
-    def __init__(self, class_name, attrs_dict=None):
-        self._class_name = class_name
-        self._object_id = None
-        self._updated_at = None
-        self._created_at = None
+    def _get_created_datetime(self):
+        return getattr(self, '_created_at', None) and self._created_at._date
 
-        if attrs_dict:
-            self._populateFromDict(attrs_dict)
+    def _set_created_datetime(self, value):
+        self._created_at = Date(value)
 
     def save(self):
-        if self._object_id:
+        if self.objectId:
             self._update()
         else:
             self._create()
 
-    def delete(self):
-        # URL: /1/classes/<className>/<objectId>
-        # HTTP Verb: DELETE
+    def _create(self):
+        # URL: /1/classes/<className>
+        # HTTP Verb: POST
 
-        self.__class__.DELETE('/%s/%s' % (self._class_name, self._object_id))
-        self = self.__init__(None)
+        uri = self.__class__.ENDPOINT_ROOT
+
+        response_dict = self.__class__.POST(uri, **self._to_native())
+
+        self.createdAt = self.updatedAt = response_dict['createdAt']
+        self.objectId = response_dict['objectId']
+
+    def _update(self):
+        # URL: /1/classes/<className>/<objectId>
+        # HTTP Verb: PUT
+
+        response = self.__class__.PUT(self._absolute_url, **self._to_native())
+        self.updatedAt = response['updatedAt']
+
+    def delete(self):
+        self.__class__.DELETE(self._absolute_url)
+        self.__dict__ = {}
+
+    _absolute_url = property(
+        lambda self: '/'.join([self.__class__.ENDPOINT_ROOT, self.objectId])
+        )
+
+    objectId = property(_get_object_id, _set_object_id)
+    createdAt = property(_get_created_datetime, _set_created_datetime)
+    updatedAt = property(_get_updated_datetime, _set_created_datetime)
+
+
+class ObjectMetaclass(type):
+    def __new__(cls, name, bases, dct):
+        cls = super(ObjectMetaclass, cls).__new__(cls, name, bases, dct)
+        cls.set_endpoint_root()
+        cls.Query = QueryManager(cls)
+        return cls
+
+
+class Object(ParseResource):
+    __metaclass__ = ObjectMetaclass
+    ENDPOINT_ROOT = '/'.join([API_ROOT, 'classes'])
+
+    @classmethod
+    def factory(cls, class_name):
+        class DerivedClass(cls):
+            pass
+        DerivedClass.__name__ = class_name
+        return DerivedClass
+
+    @classmethod
+    def set_endpoint_root(cls):
+        root = '/'.join([API_ROOT, 'classes', cls.__name__])
+        if cls.ENDPOINT_ROOT != root:
+            cls.ENDPOINT_ROOT = root
+        return cls.ENDPOINT_ROOT
+
+    def __new__(cls, *args, **kw):
+        cls.set_endpoint_root()
+        manager = getattr(cls, 'Query', QueryManager(cls))
+        if not (hasattr(cls, 'Query') and manager.model_class is cls):
+            cls.Query = manager
+        return ParseResource.__new__(cls)
+
+    @property
+    def _absolute_url(self):
+        if not self.objectId:
+            return None
+
+        return '/'.join([self.__class__.ENDPOINT_ROOT, self.objectId])
 
     def increment(self, key, amount=1):
         """
         Increment one value in the object. Note that this happens immediately:
         it does not wait for save() to be called
         """
-        uri = '/%s/%s' % (self._class_name, self._object_id)
         payload = {
             key: {
                 '__op': 'Increment',
                 'amount': amount
                 }
             }
-        self._populateFromDict(self.__class__.execute(uri, 'PUT', **payload))
-
-    def has(self, attr):
-        return attr in self.__dict__
-
-    def remove(self, attr):
-        self.__dict__.pop(attr)
-
-    # dictionary and list-like methods
-    def __contains__(self, k):
-        return not k.startswith("_") and k in self.__dict__
-
-    def __iter__(self):
-        return (k for k in self.__dict__ if not k.startswith("_"))
-
-    def __getitem__(self, key):
-        if key.startswith("_"):
-            raise KeyError("Cannot access this value in this way")
-        return self.__dict__[key]
-
-    def __setitem__(self, key, value):
-        if key.startswith("_"):
-            raise KeyError("Cannot change this value in this way")
-        self.__dict__[key] = value
-
-    def items(self):
-        return self._attributes.items()
-
-    def refresh(self):
-        uri = '/%s/%s' % (self._class_name, self._object_id)
-        response_dict = self.__class__.execute(uri, 'GET')
-        self._populateFromDict(response_dict)
-
-    def _populateFromDict(self, attrs_dict):
-        if 'objectId' in attrs_dict:
-            self._object_id = attrs_dict['objectId']
-            del attrs_dict['objectId']
-        if 'createdAt' in attrs_dict:
-            self._created_at = attrs_dict['createdAt']
-            del attrs_dict['createdAt']
-        if 'updatedAt' in attrs_dict:
-            self._updated_at = attrs_dict['updatedAt']
-            del attrs_dict['updatedAt']
-
-        attrs_dict = dict(map(self._convertFromParseType, attrs_dict.items()))
-
-        self.__dict__.update(attrs_dict)
-
-    def _convertFromParseType(self, prop):
-        key, value = prop
-
-        if type(value) == dict and '__type' in value:
-            if value['__type'] == 'Pointer':
-                value = ObjectQuery(value['className']).get(value['objectId'])
-            elif value['__type'] == 'Date':
-                value = self._ISO8601ToDatetime(value['iso'])
-            elif value['__type'] == 'Bytes':
-                value = ParseBinaryDataWrapper(base64.b64decode(
-                                                            value['base64']))
-            elif value['__type'] == 'GeoPoint':
-                value = 'POINT(%s %s)' % (value['longitude'],
-                                          value['latitude'])
-            else:
-                raise Exception('Invalid __type.')
-
-        return (key, value)
-
-    def _create(self):
-        # URL: /1/classes/<className>
-        # HTTP Verb: POST
-
-        uri = '/%s' % self._class_name
-
-        response_dict = self.__class__.POST(uri, **self._attributes)
-
-        self._created_at = self._updated_at = response_dict['createdAt']
-        self._object_id = response_dict['objectId']
-
-    def _update(self):
-        # URL: /1/classes/<className>/<objectId>
-        # HTTP Verb: PUT
-
-        uri = '/%s/%s' % (self._class_name, self._object_id)
-
-        response_dict = self.__class__.PUT(uri, **self._attributes)
-        self._updated_at = response_dict['updatedAt']
-
-
-class User(Object):
-    """
-    A User is like a regular Parse object (can be modified and saved) but
-    it requires additional methods and functionality
-    """
-    ENDPOINT_ROOT = '/'.join([API_ROOT, 'users'])
-
-    def __init__(self, username, password=None, **kw):
-        """
-        Initialized with a username and possibly password along with any other
-        attributes (name, phone number...)
-        """
-        kw["username"] = username
-        kw["password"] = password
-        Object.__init__(self, "", kw)
-
-    @classmethod
-    def retrieve(cls, resource_id):
-        """retrieve a user by its ID"""
-        ret = cls.GET('/' + resource_id)
-        username = ret.pop("username")
-        return cls(username, **ret)
-
-    def needs_session(func):
-        """decorator describing User methods that need to be logged in"""
-        def ret(obj, *a, **kw):
-            if not hasattr(obj, "sessionToken"):
-                raise ParseError("%s requires a logged-in session" %
-                                    (func.__name__, ))
-            func(obj, *a, **kw)
-        return ret
-
-    def signup(self, **kw):
-        """same as creating an object, with handling if user already exists"""
-        try:
-            self._create()
-        except urllib2.HTTPError as e:
-            if "400" in str(e):
-                raise ParseError("User already exists")
-            else:
-                raise
-
-    def login(self):
-        try:
-            ret = self.GET('/'.join([API_ROOT, 'login']),
-                            username=self.username, password=self.password)
-        except urllib2.HTTPError:
-            raise ParseError("Invalid login")
-        # update all attributes
-        self._populateFromDict(ret)
-
-    @needs_session
-    def save(self):
-        session_header = {'X-Parse-Session-Token': self.sessionToken}
-        # remove items you can't change
-        save_dict = {k: v for k, v in self._attributes.items()
-                        if k not in ["username", "password", "sessionToken"]}
-
-        return self.__class__.PUT(
-                            self._absolute_url, extra_headers=session_header,
-                            **save_dict)
-
-    @needs_session
-    def delete(self):
-        session_header = {'X-Parse-Session-Token': self.sessionToken}
-        return self.DELETE("/" + self.objectId(), extra_headers=session_header)
-
-    @classmethod
-    def request_password_reset(cls, email):
-        """reset a user's password using his email"""
-        return self.POST('/'.join([API_ROOT, 'requestPasswordReset']),
-                         email=email)
-
-
-class Push(ParseResource):
-    ENDPOINT_ROOT = '/'.join([API_ROOT, 'push'])
-
-    @classmethod
-    def send(cls, message, channels=None, **kw):
-        alert_message = {'alert': message}
-        targets = {}
-        if channels:
-            targets['channels'] = channels
-        if kw:
-            targets['where'] = kw
-        return cls.POST('', data=alert_message, **targets)
-
-
-class Query(ParseBase):
-
-    def __init__(self):
-        self._where = collections.defaultdict(dict)
-        self._options = {}
-
-    def eq(self, name, value):
-        self._where[name] = value
-        return self
-
-    # It's tempting to generate the comparison functions programatically,
-    # but probably not worth the decrease in readability of the code.
-    def lt(self, name, value):
-        self._where[name]['$lt'] = value
-        return self
-
-    def lte(self, name, value):
-        self._where[name]['$lte'] = value
-        return self
-
-    def gt(self, name, value):
-        self._where[name]['$gt'] = value
-        return self
-
-    def gte(self, name, value):
-        self._where[name]['$gte'] = value
-        return self
-
-    def ne(self, name, value):
-        self._where[name]['$ne'] = value
-        return self
-
-    def order(self, order, decending=False):
-        # add a minus sign before the order value if decending == True
-        self._options['order'] = decending and ('-' + order) or order
-        return self
-
-    def limit(self, limit):
-        self._options['limit'] = limit
-        return self
-
-    def skip(self, skip):
-        self._options['skip'] = skip
-        return self
-
-    def get(self, object_id):
-        return self.__class__.QUERY_CLASS.retrieve(object_id)
-
-    def fetch(self):
-        # hide the single_result param of the _fetch method from the library
-        # user since it's only useful internally
-        return self._fetch()
-
-    def _fetch(self):
-        options = dict(self._options)  # make a local copy
-        if self._where:
-            # JSON encode WHERE values
-            where = json.dumps(self._where)
-            options.update({'where': where})
-
-        response = self.__class__.GET('', **options)
-        return [self.__class__.QUERY_CLASS(**result)
-                    for result in response['results']]
-
-
-class ObjectQuery(Query):
-    ENDPOINT_ROOT = '/'.join([API_ROOT, 'classes'])
-
-    def __init__(self, class_name):
-        self._class_name = class_name
-        self._where = collections.defaultdict(dict)
-        self._options = {}
-        self._object_id = ''
-
-    def get(self, object_id):
-        self._object_id = object_id
-        return self._fetch(single_result=True)
-
-    def _fetch(self, single_result=False):
-        # URL: /1/classes/<className>/<objectId>
-        # HTTP Verb: GET
-
-        if self._object_id:
-            response = self.__class__.GET('/%s/%s' % (self._class_name,
-                                                        self._object_id))
-        else:
-            options = dict(self._options)  # make a local copy
-            if self._where:
-                # JSON encode WHERE values
-                where = json.dumps(self._where)
-                options.update({'where': where})
-
-            response = self.__class__.GET('/%s' % self._class_name, **options)
-
-        if single_result:
-            return Object(self._class_name, response)
-        else:
-            return [Object(self._class_name, result)
-                        for result in response['results']]
-
-
-class UserQuery(Query):
-    ENDPOINT_ROOT = '/'.join([API_ROOT, 'users'])
-    QUERY_CLASS = User
-
-
-class InstallationQuery(Query):
-    ENDPOINT_ROOT = '/'.join([API_ROOT, 'installations'])
-    QUERY_CLASS = Installation
-
-    def _fetch(self):
-        options = dict(self._options)  # make a local copy
-        if self._where:
-            # JSON encode WHERE values
-            where = json.dumps(self._where)
-            options.update({'where': where})
-
-        extra_headers = {'X-Parse-Master-Key': MASTER_KEY}
-        response = self.__class__.GET('', extra_headers=extra_headers,
-                                        **options)
-        return [self.__class__.QUERY_CLASS(**result)
-                    for result in response['results']]
+        self.__class__.PUT(self._absolute_url, **payload)
+        self.__dict__[key] += amount
 
 
 class ParseError(Exception):
-    """
-    Represents exceptions coming from Parse (e.g. invalid login or signup)
-    """
+    '''Base exceptions from requests made to Parse'''
+    pass
+
+
+class ResourceRequestBadRequest(ParseError):
+    '''Request returns a 400'''
+    pass
+
+
+class ResourceRequestLoginRequired(ParseError):
+    '''Request returns a 401'''
+    pass
+
+
+class ResourceRequestForbidden(ParseError):
+    '''Request returns a 403'''
+    pass
+
+
+class ResourceRequestNotFound(ParseError):
+    '''Request returns a 404'''
     pass
