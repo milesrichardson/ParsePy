@@ -50,48 +50,59 @@ You can then test the installation by running:
 Basic Usage
 -----------
 
-Let's get everything set up first. You'll need to give `parse_rest` your `_Application Id_` and `_REST API Key_` (available from your Parse dashboard) in order to get access to your data.
+Let's get everything set up first. You'll need to give `parse_rest` your Application Id and REST API Key (available from your Parse dashboard) in order to get access to your data.
 
 ~~~~~ {python}
->>> import parse_rest
->>> parse_rest.APPLICATION_ID = "your application id"
->>> parse_rest.REST_API_KEY = "your REST API key here"
+import parse_rest
+parse_rest.APPLICATION_ID = "your application id"
+parse_rest.REST_API_KEY = "your REST API key here"
 ~~~~~
 
-To create a new object of the Parse class _GameScore_:
+To create a new object of the Parse class `GameScore`, you first create such a class inheriting `parse_rest.Object`:
 
 ~~~~~ {python}
->>> gameScore = parse_rest.Object("GameScore")
->>> gameScore.score = 1337
->>> gameScore.playerName = "Sean Plott"
->>> gameScore.cheatMode = False
+class GameScore(parse_rest.Object):
+    pass
 ~~~~~
 
-As you can see, we add new properties simply by assigning values to our _Object_'s attributes. Supported data types are any type that can be serialized by JSON and Python's _datetime.datetime_ object. (Binary data and references to other _Object_'s are also supported, as we'll see in a minute.)
+And then initialize it with your parameters:
+
+~~~~~ {python}
+gameScore = GameScore(score=1337, player_name='John Doe', cheat_mode=False)
+~~~~~
+
+You can change or set new parameters afterwards:
+
+~~~~ {python}
+gameScore.cheat_mode = True
+gameScore.level = 20
+~~~~
+
+Supported data types are any type that can be serialized by JSON and Python's _datetime.datetime_ object. (Binary data and references to other _Object_'s are also supported, as we'll see in a minute.)
 
 To save our new object, just call the save() method:
 
 ~~~~~ {python}
->>> gameScore.save()
+gameScore.save()
 ~~~~~
 
 If we want to make an update, just call save() again after modifying an attribute to send the changes to the server:
 
 ~~~~~ {python}
->>> gameScore.score = 2061
->>> gameScore.save()
+gameScore.score = 2061
+gameScore.save()
 ~~~~~
 
 You can also increment the score in a single API query:
 
 ~~~~~ {python}
->>> gameScore.increment("score")
+gameScore.increment("score")
 ~~~~~
 
 Now that we've done all that work creating our first Parse object, let's delete it:
 
 ~~~~~ {python}
->>> gameScore.delete()
+gameScore.delete()
 ~~~~~
 
 That's it! You're ready to start saving data on Parse.
@@ -102,12 +113,12 @@ Object Metadata
 The methods objectId(), createdAt(), and updatedAt() return metadata about a _Object_ that cannot be modified through the API:
 
 ~~~~~ {python}
->>> gameScore.objectId()
-'xxwXx9eOec'
->>> gameScore.createdAt()
-datetime.datetime(2011, 9, 16, 21, 51, 36, 784000)
->>> gameScore.updatedAt()
-datetime.datetime(2011, 9, 118, 14, 18, 23, 152000)
+gameScore.objectId()
+# 'xxwXx9eOec'
+gameScore.createdAt()
+# datetime.datetime(2011, 9, 16, 21, 51, 36, 784000)
+gameScore.updatedAt()
+# datetime.datetime(2011, 9, 118, 14, 18, 23, 152000)
 ~~~~~
 
 Additional Datatypes
@@ -116,45 +127,47 @@ Additional Datatypes
 If we want to store data in a Object, we should wrap it in a ParseBinaryDataWrapper. The ParseBinaryDataWrapper behaves just like a string, and inherits all of _str_'s methods.
 
 ~~~~~ {python}
->>> gameScore.victoryImage = parse_rest.ParseBinaryDataWrapper('\x03\xf3\r\n\xc7\x81\x7fNc ... ')
+gameScore.victoryImage = parse_rest.ParseBinaryDataWrapper('\x03\xf3\r\n\xc7\x81\x7fNc ... ')
 ~~~~~
 
 We can store a reference to another Object by assigning it to an attribute:
 
 ~~~~~ {python}
->>> collectedItem = parse_rest.Object("CollectedItem")
->>> collectedItem.type = "Sword"
->>> collectedItem.isAwesome = True
->>> collectedItem.save() # we have to save it before it can be referenced
+class CollectedItem(parse_rest.Object):
+    pass
 
->>> gameScore.item = collectedItem
+collectedItem = CollectedItem(type="Sword", isAwesome=True)
+collectedItem.save() # we have to save it before it can be referenced
+
+gameScore.item = collectedItem
 ~~~~~
 
 We can also store geoPoint dataTypes as attributes using the format <code>'POINT(longitude latitude)'</code>, with latitude and longitude as float values
 
 ~~~~~ {python}
->>> restaurant = parse_rest.Object("Restaurant")
->>> restaurant.name = "Los Pollos Hermanos"
->>> restaurant.location ="POINT(12.0 -34.45)"
->>> restaurant.save()
+class Restaurant(parse_rest.Object):
+    pass
+
+restaurant = Restaurant(name="Los Pollos Hermanos")
+restaurant.location ="POINT(12.0 -34.45)"
+restaurant.save()
 ~~~~~
 
 
 Querying
 --------
 
-To retrieve an object with a Parse class of _GameScore_ and an _objectId_ of _xxwXx9eOec_, run:
+To retrieve an object with a Parse class of `GameScore` and an `objectId` of `xxwXx9eOec`, run:
 
 ~~~~~ {python}
->>> gameScore = parse_rest.ObjectQuery("GameScore").get("xxwXx9eOec")
+gameScore = GameScore.Query.get("xxwXx9eOec")
 ~~~~~
 
 We can also run more complex queries to retrieve a range of objects. For example, if we want to get a list of _GameScore_ objects with scores between 1000 and 2000 ordered by _playerName_, we would call:
 
 ~~~~~ {python}
->>> query = parse_rest.ObjectQuery("GameScore")
->>> query = query.gte("score", 1000).lt("score", 2000).order("playerName")
->>> GameScores = query.fetch()
+query = GameScore.Query.gte("score", 1000).lt("score", 2000).order("playerName")
+game_scores = query.fetch()
 ~~~~~
 
 Notice how queries are built by chaining filter functions. The available filter functions are:
@@ -182,20 +195,24 @@ We can also order the results using:
 Users
 -----
 
-You can sign up, log in, modify or delete users as well, using the `User` object. Initialize it with a username and password, as well as any optional parameters.
+You can sign up, log in, modify or delete users as well, using the `User` object. You sign a user up as follows:
 
 ~~~~~ {python}
->>> u = parse_rest.User("dhelmet", "12345", phone="555-555-5555")
->>> u.signup()
->>> u.login()
+u = parse_rest.User.signup("dhelmet", "12345", phone="555-555-5555")
+~~~~~
+
+or log in an existing user with
+
+~~~~~ {python}
+u = parse_rest.User.login("dhelmet", "12345")
 ~~~~~
 
 Once a `User` has been logged in, it saves its session so that it can be edited or deleted:
 
 ~~~~~ {python}
->>> u.highscore = 300
->>> u.save()
->>> u.delete()
+u.highscore = 300
+u.save()
+u.delete()
 ~~~~~
 
 
