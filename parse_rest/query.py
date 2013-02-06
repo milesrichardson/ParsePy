@@ -13,6 +13,7 @@
 
 import json
 import collections
+import copy
 
 
 class QueryResourceDoesNotExist(Exception):
@@ -39,58 +40,66 @@ class QueryManager(object):
         return Queryset(self).where(**kw).get()
 
 
-class Queryset(object):
+class QuerysetMetaclass(type):
+    """metaclass to add the dynamically generated comparison functions"""
+    def __new__(cls, name, bases, dct):
+        cls = super(QuerysetMetaclass, cls).__new__(cls, name, bases, dct)
 
-    def __init__(self, manager):
-        self._manager = manager
+        # add comparison functions and option functions
+        for fname in ["lt", "lte", "gt", "gte", "ne"]:
+            def func(self, name, value, fname=fname):
+                s = copy.deepcopy(self)
+                s._where[name]["$" + fname] = value
+                return s
+            setattr(cls, fname, func)
+
+        for fname in ["limit", "skip"]:
+            def func(self, value, fname=fname):
+                s = copy.deepcopy(self)
+                s._options[fname] = value
+                return s
+            setattr(cls, fname, func)
+
+        return cls
+
+
+class Queryset(object):
+    __metaclass__ = QuerysetMetaclass
+
+    def __init__(self, model_class):
+        self.model_class = model_class
         self._where = collections.defaultdict(dict)
         self._options = {}
 
     def __iter__(self):
         return iter(self._fetch())
 
+    def copy_method(f):
+        """Represents functions that have to make a copy before running"""
+        def newf(self, *a, **kw):
+            s = copy.deepcopy(self)
+            return f(s, *a, **kw)
+        return newf
+
+    def all(self):
+        """return as a list"""
+        return list(self)
+
+    @copy_method
     def where(self, **kw):
         for key, value in kw.items():
-            self.eq(key, value)
+            self = self.eq(key, value)
         return self
 
+    @copy_method
     def eq(self, name, value):
         self._where[name] = value
         return self
 
-    # It's tempting to generate the comparison functions programatically,
-    # but probably not worth the decrease in readability of the code.
-    def lt(self, name, value):
-        self._where[name]['$lt'] = value
-        return self
-
-    def lte(self, name, value):
-        self._where[name]['$lte'] = value
-        return self
-
-    def gt(self, name, value):
-        self._where[name]['$gt'] = value
-        return self
-
-    def gte(self, name, value):
-        self._where[name]['$gte'] = value
-        return self
-
-    def ne(self, name, value):
-        self._where[name]['$ne'] = value
-        return self
-
+    @copy_method
     def order(self, order, decending=False):
         # add a minus sign before the order value if decending == True
         self._options['order'] = decending and ('-' + order) or order
-        return self
-
-    def limit(self, limit):
-        self._options['limit'] = limit
-        return self
-
-    def skip(self, skip):
-        self._options['skip'] = skip
         return self
 
     def exists(self):
@@ -112,6 +121,6 @@ class Queryset(object):
             where = json.dumps(self._where)
             options.update({'where': where})
 
-        klass = self._manager.model_class
-        uri = self._manager.model_class.ENDPOINT_ROOT
+        klass = self.model_class
+        uri = self.model_class.ENDPOINT_ROOT
         return [klass(**it) for it in klass.GET(uri, **options).get('results')]

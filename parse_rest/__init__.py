@@ -21,7 +21,7 @@ import re
 import logging
 
 
-from query import QueryManager
+from query import Queryset
 
 API_ROOT = 'https://api.parse.com/1'
 
@@ -84,11 +84,19 @@ class Date(ParseType):
 
     @classmethod
     def from_native(cls, **kw):
-        date_str = kw.get('iso', '')[:-1] + 'UTC'
-        return cls(datetime.datetime.strptime(date_str, Date.FORMAT))
+        return cls(self._from_str(kw.get('iso', '')))
+
+    @staticmethod
+    def _from_str(date_str):
+        """turn a ISO 8601 string into a datetime object"""
+        return datetime.datetime.strptime(date_str[:-1] + 'UTC', Date.FORMAT)
 
     def __init__(self, date):
-        self._date = date
+        """Can be initialized either with a string or a datetime"""
+        if isinstance(date, datetime.datetime):
+            self._date = date
+        elif isinstance(date, unicode):
+            self._date = Date._from_str(date)
 
     def _to_native(self):
         return {
@@ -279,14 +287,14 @@ class ParseResource(ParseBase):
 
     objectId = property(_get_object_id, _set_object_id)
     createdAt = property(_get_created_datetime, _set_created_datetime)
-    updatedAt = property(_get_updated_datetime, _set_created_datetime)
+    updatedAt = property(_get_updated_datetime, _set_updated_datetime)
 
 
 class ObjectMetaclass(type):
     def __new__(cls, name, bases, dct):
         cls = super(ObjectMetaclass, cls).__new__(cls, name, bases, dct)
         cls.set_endpoint_root()
-        cls.Query = QueryManager(cls)
+        cls.Query = Queryset(cls)
         return cls
 
 
@@ -308,13 +316,6 @@ class Object(ParseResource):
             cls.ENDPOINT_ROOT = root
         return cls.ENDPOINT_ROOT
 
-    def __new__(cls, *args, **kw):
-        cls.set_endpoint_root()
-        manager = getattr(cls, 'Query', QueryManager(cls))
-        if not (hasattr(cls, 'Query') and manager.model_class is cls):
-            cls.Query = manager
-        return ParseResource.__new__(cls)
-
     @property
     def _absolute_url(self):
         if not self.objectId:
@@ -335,6 +336,68 @@ class Object(ParseResource):
             }
         self.__class__.PUT(self._absolute_url, **payload)
         self.__dict__[key] += amount
+
+
+def login_required(func):
+    '''decorator describing User methods that need to be logged in'''
+    def ret(obj, *args, **kw):
+        if not hasattr(obj, 'sessionToken'):
+            message = '%s requires a logged-in session' % func.__name__
+            raise ResourceRequestLoginRequired(message)
+        func(obj, *args, **kw)
+    return ret
+
+
+class User(ParseResource):
+    '''
+    A User is like a regular Parse object (can be modified and saved) but
+    it requires additional methods and functionality
+    '''
+    ENDPOINT_ROOT = '/'.join([API_ROOT, 'users'])
+    PROTECTED_ATTRIBUTES = ParseResource.PROTECTED_ATTRIBUTES + [
+        'username', 'sessionToken']
+
+    def is_authenticated(self):
+        return getattr(self, 'sessionToken', None) or False
+
+    @login_required
+    def save(self):
+        session_header = {'X-Parse-Session-Token': self.sessionToken}
+        return self.__class__.PUT(
+            self._absolute_url,
+            extra_headers=session_header,
+            **self._to_native())
+
+    @login_required
+    def delete(self):
+        session_header = {'X-Parse-Session-Token': self.sessionToken}
+        return self.DELETE(self._absolute_url, extra_headers=session_header)
+
+    @staticmethod
+    def signup(username, password, **kw):
+        return User(**User.POST('', username=username, password=password,
+                                **kw))
+
+    @staticmethod
+    def login(username, password):
+        login_url = '/'.join([API_ROOT, 'login'])
+        return User(**User.GET(login_url, username=username,
+                                password=password))
+
+    @staticmethod
+    def request_password_reset(email):
+        '''Trigger Parse's Password Process. Return True/False
+        indicate success/failure on the request'''
+
+        url = '/'.join([API_ROOT, 'requestPasswordReset'])
+        try:
+            User.POST(url, email=email)
+            return True
+        except Exception, why:
+            return False
+
+
+User.Query = Queryset(User)
 
 
 class ParseError(Exception):

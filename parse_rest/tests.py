@@ -14,6 +14,7 @@ import datetime
 import __init__ as parse_rest
 from __init__ import GeoPoint, Object
 from user import User
+import query
 
 
 try:
@@ -86,10 +87,17 @@ class TestObject(unittest.TestCase):
         self.score.save()
         self.assert_(self.score.objectId is not None, 'Can not create object')
 
+        self.assert_(type(self.score.objectId) == unicode)
+        self.assert_(type(self.score.createdAt) == datetime.datetime)
+        self.assert_(GameScore.Query.where(
+                        objectId=self.score.objectId).exists(),
+                        'Can not create object')
+
     def testCanUpdateExistingObject(self):
         self.sao_paulo.save()
         self.sao_paulo.country = 'Brazil'
         self.sao_paulo.save()
+        self.assert_(type(self.sao_paulo.updatedAt) == datetime.datetime)
 
         city = City.Query.where(name='São Paulo').get()
         self.assert_(city.country == 'Brazil', 'Could not update object')
@@ -107,6 +115,93 @@ class TestObject(unittest.TestCase):
         self.score.increment('score')
         self.assert_(GameScore.Query.where(score=previous_score + 1).exists(),
                      'Failed to increment score on backend')
+
+
+class TestQuery(unittest.TestCase):
+    """Tests of an object's Queryset"""
+    def setUp(self):
+        """save a bunch of GameScore objects with varying scores"""
+        # first delete any that exist
+        for s in GameScore.Query.all():
+            s.delete()
+
+        self.scores = [GameScore(score=s, player_name='John Doe')
+                            for s in range(1, 6)]
+        for s in self.scores:
+            s.save()
+
+    def testExists(self):
+        """test the Queryset.exists() method"""
+        for s in range(1, 6):
+            self.assert_(GameScore.Query.where(score=s).exists(),
+                         "exists giving false negative")
+        self.assert_(not GameScore.Query.where(score=10).exists(),
+                     "exists giving false positive")
+
+    def testWhereGet(self):
+        """test the Queryset.where() and Queryset.get() methods"""
+        for s in self.scores:
+            qobj = GameScore.Query.where(objectId=s.objectId).get()
+            self.assert_(qobj.objectId == s.objectId,
+                         "Getting object with .where() failed")
+            self.assert_(qobj.score == s.score,
+                         "Getting object with .where() failed")
+
+        # test the two exceptions get can raise
+        self.assertRaises(query.QueryResourceDoesNotExist,
+                          GameScore.Query.gt("score", 20).get)
+        self.assertRaises(query.QueryResourceMultipleResultsReturned,
+                          GameScore.Query.gt("score", 3).get)
+
+    def testComparisons(self):
+        """test comparison operators- gt, gte, lt, lte, ne"""
+        scores_gt_3 = list(GameScore.Query.gt("score", 3))
+        self.assertEqual(len(scores_gt_3), 2)
+        self.assert_(all([s.score > 3 for s in scores_gt_3]))
+
+        scores_gte_3 = list(GameScore.Query.gte("score", 3))
+        self.assertEqual(len(scores_gte_3), 3)
+        self.assert_(all([s.score >= 3 for s in scores_gt_3]))
+
+        scores_lt_4 = list(GameScore.Query.lt("score", 4))
+        self.assertEqual(len(scores_lt_4), 3)
+        self.assert_(all([s.score < 4 for s in scores_lt_4]))
+
+        scores_lte_4 = list(GameScore.Query.lte("score", 4))
+        self.assertEqual(len(scores_lte_4), 4)
+        self.assert_(all([s.score <= 4 for s in scores_lte_4]))
+
+        scores_ne_2 = list(GameScore.Query.ne("score", 2))
+        self.assertEqual(len(scores_ne_2), 4)
+        self.assert_(all([s.score != 2 for s in scores_ne_2]))
+
+        # test chaining
+        lt_4_gt_2 = list(GameScore.Query.lt("score", 4).gt("score", 2))
+        self.assert_(len(lt_4_gt_2) == 1, "chained lt+gt not working")
+        self.assert_(lt_4_gt_2[0].score == 3, "chained lt+gt not working")
+        q = GameScore.Query.gt("score", 3).lt("score", 3)
+        self.assert_(not q.exists(), "chained lt+gt not working")
+
+    def testOptions(self):
+        """test three options- order, limit, and skip"""
+        scores_ordered = list(GameScore.Query.order("score"))
+        self.assertEqual([s.score for s in scores_ordered],
+                         [1, 2, 3, 4, 5])
+
+        scores_ordered_desc = list(GameScore.Query.order("score", True))
+        self.assertEqual([s.score for s in scores_ordered_desc],
+                         [5, 4, 3, 2, 1])
+
+        scores_limit_3 = list(GameScore.Query.limit(3))
+        self.assert_(len(scores_limit_3) == 3, "Limit did not return 3 items")
+
+        scores_skip_3 = list(GameScore.Query.skip(3))
+        self.assert_(len(scores_skip_3) == 2, "Skip did not return 2 items")
+
+    def tearDown(self):
+        """delete all GameScore objects"""
+        for s in GameScore.Query.all():
+            s.delete()
 
 
 class TestFunction(unittest.TestCase):
