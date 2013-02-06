@@ -141,6 +141,18 @@ restaurant.location ="POINT(12.0 -34.45)"
 restaurant.save()
 ~~~~~
 
+We can store a reference to another Object by assigning it to an attribute:
+
+~~~~~ {python}
+class CollectedItem(parse_rest.Object):
+    pass
+
+collectedItem = CollectedItem(type="Sword", isAwesome=True)
+collectedItem.save() # we have to save it before it can be referenced
+
+gameScore.item = collectedItem
+~~~~~
+
 
 Querying
 --------

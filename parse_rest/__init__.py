@@ -107,7 +107,7 @@ class Date(ParseType):
 class Binary(ParseType):
 
     @classmethod
-    def from_native(self, **kw):
+    def from_native(cls, **kw):
         return cls(kw.get('base64', ''))
 
     def __init__(self, encoded_string):
@@ -121,7 +121,7 @@ class Binary(ParseType):
 class GeoPoint(ParseType):
 
     @classmethod
-    def from_native(self, **kw):
+    def from_native(cls, **kw):
         return cls(kw.get('latitude'), kw.get('longitude'))
 
     def __init__(self, latitude, longitude):
@@ -139,7 +139,7 @@ class GeoPoint(ParseType):
 class File(ParseType):
 
     @classmethod
-    def from_native(self, **kw):
+    def from_native(cls, **kw):
         return cls(kw.get('url'), kw.get('name'))
 
     def __init__(self, url, name):
@@ -211,7 +211,7 @@ class Function(ParseBase):
         return self.POST("/" + self.name, **kwargs)
 
 
-class ParseResource(ParseBase):
+class ParseResource(ParseBase, Pointer):
 
     PROTECTED_ATTRIBUTES = ['objectId', 'createdAt', 'updatedAt']
 
@@ -221,9 +221,9 @@ class ParseResource(ParseBase):
 
     def __init__(self, **kw):
         for key, value in kw.items():
-            setattr(self, key, value)
+            setattr(self, key, ParseType.convert(value))
 
-    def _to_native(self):
+    def _to_dict(self):
         # serializes all attributes that need to be persisted on Parse
 
         protected_attributes = self.__class__.PROTECTED_ATTRIBUTES
@@ -265,7 +265,7 @@ class ParseResource(ParseBase):
 
         uri = self.__class__.ENDPOINT_ROOT
 
-        response_dict = self.__class__.POST(uri, **self._to_native())
+        response_dict = self.__class__.POST(uri, **self._to_dict())
 
         self.createdAt = self.updatedAt = response_dict['createdAt']
         self.objectId = response_dict['objectId']
@@ -274,7 +274,7 @@ class ParseResource(ParseBase):
         # URL: /1/classes/<className>/<objectId>
         # HTTP Verb: PUT
 
-        response = self.__class__.PUT(self._absolute_url, **self._to_native())
+        response = self.__class__.PUT(self._absolute_url, **self._to_dict())
         self.updatedAt = response['updatedAt']
 
     def delete(self):
@@ -306,7 +306,8 @@ class Object(ParseResource):
     def factory(cls, class_name):
         class DerivedClass(cls):
             pass
-        DerivedClass.__name__ = class_name
+        DerivedClass.__name__ = str(class_name)
+        DerivedClass.set_endpoint_root()
         return DerivedClass
 
     @classmethod
@@ -366,7 +367,7 @@ class User(ParseResource):
         return self.__class__.PUT(
             self._absolute_url,
             extra_headers=session_header,
-            **self._to_native())
+            **self._to_dict())
 
     @login_required
     def delete(self):

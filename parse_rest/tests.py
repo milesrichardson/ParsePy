@@ -13,7 +13,6 @@ import datetime
 
 import __init__ as parse_rest
 from __init__ import GeoPoint, Object
-from user import User
 import query
 
 
@@ -54,6 +53,10 @@ class City(Object):
 
 
 class Review(Object):
+    pass
+
+
+class CollectedItem(Object):
     pass
 
 
@@ -115,6 +118,20 @@ class TestObject(unittest.TestCase):
         self.score.increment('score')
         self.assert_(GameScore.Query.where(score=previous_score + 1).exists(),
                      'Failed to increment score on backend')
+
+    def testAssociatedObject(self):
+        """test saving and associating a different object"""
+        collectedItem = CollectedItem(type="Sword", isAwesome=True)
+        collectedItem.save()
+        self.score.item = collectedItem
+        self.score.save()
+
+        # get the object, see if it has saved
+        qs = GameScore.Query.where(objectId=self.score.objectId).get()
+        self.assert_(isinstance(qs.item, Object),
+                     "Associated CollectedItem is not of correct class")
+        self.assert_(qs.item.type == "Sword",
+                   "Associated CollectedItem does not have correct attributes")
 
 
 class TestQuery(unittest.TestCase):
@@ -251,9 +268,9 @@ class TestUser(unittest.TestCase):
 
     def _get_user(self):
         try:
-            user = User.signup(self.username, self.password)
+            user = parse_rest.User.signup(self.username, self.password)
         except:
-            user = User.Query.get(username=self.username)
+            user = parse_rest.User.Query.get(username=self.username)
         return user
 
     def _destroy_user(self):
@@ -261,8 +278,8 @@ class TestUser(unittest.TestCase):
         user and user.delete()
 
     def _get_logged_user(self):
-        if User.Query.where(username=self.username).exists():
-            return User.login(self.username, self.password)
+        if parse_rest.User.Query.where(username=self.username).exists():
+            return parse_rest.User.login(self.username, self.password)
         else:
             return self._get_user()
 
@@ -271,7 +288,7 @@ class TestUser(unittest.TestCase):
         self.password = TestUser.PASSWORD
 
         try:
-            u = User.login(self.USERNAME, self.PASSWORD)
+            u = parse_rest.User.login(self.USERNAME, self.PASSWORD)
         except parse_rest.ResourceRequestNotFound as e:
             # if the user doesn't exist, that's fine
             return
@@ -282,12 +299,12 @@ class TestUser(unittest.TestCase):
 
     def testCanSignUp(self):
         self._destroy_user()
-        user = User.signup(self.username, self.password)
+        user = parse_rest.User.signup(self.username, self.password)
         self.assert_(user is not None)
 
     def testCanLogin(self):
         self._get_user()  # User should be created here.
-        user = User.login(self.username, self.password)
+        user = parse_rest.User.login(self.username, self.password)
         self.assert_(user.is_authenticated(), 'Login failed')
 
     def testCanUpdate(self):
@@ -298,13 +315,14 @@ class TestUser(unittest.TestCase):
         user.phone = phone_number
         user.save()
 
-        self.assert_(User.Query.where(phone=phone_number).exists(),
+        self.assert_(parse_rest.User.Query.where(phone=phone_number).exists(),
                      'Failed to update user data. New info not on Parse')
 
     def testCanQueryBySession(self):
-        User.signup(self.username, self.password)
-        logged = User.login(self.username, self.password)
-        queried = User.Query.where(sessionToken=logged.sessionToken).get()
+        parse_rest.User.signup(self.username, self.password)
+        logged = parse_rest.User.login(self.username, self.password)
+        queried = parse_rest.User.Query.where(sessionToken=logged.sessionToken
+                                                                    ).get()
         self.assert_(queried.objectId == logged.objectId,
                      'Could not find user %s by session' % logged.username)
 
