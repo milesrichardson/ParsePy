@@ -190,7 +190,7 @@ Notice how queries are built by chaining filter functions. The available filter 
 We can also order the results using:
 
 * **Order**
-    * order(_parameter_name_, _decending_=False)
+    * order(_parameter_name_, _descending_=False)
 
 Users
 -----

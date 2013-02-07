@@ -97,9 +97,9 @@ class Queryset(object):
         return self
 
     @copy_method
-    def order(self, order, decending=False):
-        # add a minus sign before the order value if decending == True
-        self._options['order'] = decending and ('-' + order) or order
+    def order(self, order, descending=False):
+        # add a minus sign before the order value if descending == True
+        self._options['order'] = descending and ('-' + order) or order
         return self
 
     def exists(self):
