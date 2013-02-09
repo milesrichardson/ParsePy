@@ -179,7 +179,7 @@ object. With it, you can perform queries that return a set of objects
 or that will return a object directly.
 
 
-=== Retrieving a single object ===
+### Retrieving a single object
 
 To retrieve an object with a Parse class of `GameScore` and an
 `objectId` of `xxwXx9eOec`, run:
@@ -188,7 +188,7 @@ To retrieve an object with a Parse class of `GameScore` and an
 gameScore = GameScore.Query.get(objectId="xxwXx9eOec")
 ~~~~~
 
-=== Working with Querysets ===
+### Working with Querysets
 
 To query for sets of objects, we work with the concept of
 `Queryset`s. If you are familiar with Django you will be right at home
