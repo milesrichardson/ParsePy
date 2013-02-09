@@ -1,12 +1,17 @@
 parse_rest
 ==========
 
-**parse_rest** is a Python client for the [Parse REST API](https://www.parse.com/docs/rest). It provides Python object mapping for Parse objects with methods to save, update, and delete objects, as well as an interface for querying stored objects.
+**parse_rest** is a Python client for the [Parse REST
+  API](https://www.parse.com/docs/rest). It provides Python object
+  mapping for Parse objects with methods to save, update, and delete
+  objects, as well as an interface for querying stored objects.
 
 Installation
 ------------
 
-The easiest way to install this package is from [PyPI](http://pypi.python.org/pypi), either using [easy_install](http://packages.python.org/distribute/easy_install.html):
+The easiest way to install this package is from
+[PyPI](http://pypi.python.org/pypi), either using
+[easy_install](http://packages.python.org/distribute/easy_install.html):
 
     easy_install parse_rest
 
@@ -14,9 +19,11 @@ or [pip](http://pypi.python.org/pypi/pip):
 
     pip install parse_rest
 
-(if you are using a Mac or Linux system you may need to prepend `sudo` to either command).
+(if you are using a Mac or Linux system you may need to prepend `sudo`
+to either command).
 
-Alternatively, you can install it from source by downloading or cloning this repository:
+Alternatively, you can install it from source by downloading or
+cloning this repository:
 
     git clone git@github.com:dgrtwo/ParsePy.git
 
@@ -32,7 +39,8 @@ Testing
 
 To run the tests, you need to:
 
-* create a `settings_local.py` file in your local directory with three variables that define a sample Parse application to use for testing:
+* create a `settings_local.py` file in your local directory with three
+  variables that define a sample Parse application to use for testing:
 
 ~~~~~ {python}
 APPLICATION_ID = "APPLICATION_ID_HERE"
@@ -40,7 +48,8 @@ REST_API_KEY = "REST_API_KEY_HERE"
 MASTER_KEY = "MASTER_KEY_HERE"
 ~~~~~
 
-* install the [Parse CloudCode command line tool](https://www.parse.com/docs/cloud_code_guide)
+* install the [Parse CloudCode command line
+  tool](https://www.parse.com/docs/cloud_code_guide)
 
 You can then test the installation by running:
 
@@ -50,7 +59,9 @@ You can then test the installation by running:
 Basic Usage
 -----------
 
-Let's get everything set up first. You'll need to give `parse_rest` your Application Id and REST API Key (available from your Parse dashboard) in order to get access to your data.
+Let's get everything set up first. You'll need to give `parse_rest`
+your Application Id and REST API Key (available from your Parse
+dashboard) in order to get access to your data.
 
 ~~~~~ {python}
 import parse_rest
@@ -58,7 +69,8 @@ parse_rest.APPLICATION_ID = "your application id"
 parse_rest.REST_API_KEY = "your REST API key here"
 ~~~~~
 
-To create a new object of the Parse class `GameScore`, you first create such a class inheriting `parse_rest.Object`:
+To create a new object of the Parse class `GameScore`, you first
+create such a class inheriting `parse_rest.Object`:
 
 ~~~~~ {python}
 class GameScore(parse_rest.Object):
@@ -78,7 +90,9 @@ gameScore.cheat_mode = True
 gameScore.level = 20
 ~~~~
 
-Supported data types are any type that can be serialized by JSON and Python's _datetime.datetime_ object. (Binary data and references to other _Object_'s are also supported, as we'll see in a minute.)
+Supported data types are any type that can be serialized by JSON and
+Python's _datetime.datetime_ object. (Binary data and references to
+other _Object_'s are also supported, as we'll see in a minute.)
 
 To save our new object, just call the save() method:
 
@@ -86,7 +100,8 @@ To save our new object, just call the save() method:
 gameScore.save()
 ~~~~~
 
-If we want to make an update, just call save() again after modifying an attribute to send the changes to the server:
+If we want to make an update, just call save() again after modifying
+an attribute to send the changes to the server:
 
 ~~~~~ {python}
 gameScore.score = 2061
@@ -110,7 +125,8 @@ That's it! You're ready to start saving data on Parse.
 Object Metadata
 ---------------
 
-The attributes objectId, createdAt, and updatedAt show metadata about a _Object_ that cannot be modified through the API:
+The attributes objectId, createdAt, and updatedAt show metadata about
+a _Object_ that cannot be modified through the API:
 
 ~~~~~ {python}
 gameScore.objectId
@@ -124,20 +140,21 @@ gameScore.updatedAt
 Additional Datatypes
 --------------------
 
-If we want to store data in a Object, we should wrap it in a ParseBinaryDataWrapper. The ParseBinaryDataWrapper behaves just like a string, and inherits all of _str_'s methods.
+If we want to store binary streams in a Object, we can use the parse_rest.Binary type:
 
 ~~~~~ {python}
-gameScore.victoryImage = parse_rest.ParseBinaryDataWrapper('\x03\xf3\r\n\xc7\x81\x7fNc ... ')
+gameScore.victoryImage = parse_rest.Binary('\x03\xf3\r\n\xc7\x81\x7fNc ... ')
 ~~~~~
 
-We can also store geoPoint dataTypes as attributes using the format <code>'POINT(longitude latitude)'</code>, with latitude and longitude as float values
+We can also store geoPoint dataTypes, with latitude and longitude
+as float values.
 
 ~~~~~ {python}
 class Restaurant(parse_rest.Object):
     pass
 
 restaurant = Restaurant(name="Los Pollos Hermanos")
-restaurant.location ="POINT(12.0 -34.45)"
+restaurant.location = parse_rest.GeoPoint(latitude=12.0, longitude=-34.45)
 restaurant.save()
 ~~~~~
 
@@ -157,40 +174,117 @@ gameScore.item = collectedItem
 Querying
 --------
 
-To retrieve an object with a Parse class of `GameScore` and an `objectId` of `xxwXx9eOec`, run:
+Any class inheriting from `parse_rest.Object` has a `Query`
+object. With it, you can perform queries that return a set of objects
+or that will return a object directly.
+
+
+=== Retrieving a single object ===
+
+To retrieve an object with a Parse class of `GameScore` and an
+`objectId` of `xxwXx9eOec`, run:
 
 ~~~~~ {python}
-gameScore = GameScore.Query.where(objectId="xxwXx9eOec").get()
+gameScore = GameScore.Query.get(objectId="xxwXx9eOec")
 ~~~~~
 
-We can also run more complex queries to retrieve a range of objects. For example, if we want to get a list of _GameScore_ objects with scores between 1000 and 2000 ordered by _playerName_, we would call:
+=== Working with Querysets ===
+
+To query for sets of objects, we work with the concept of
+`Queryset`s. If you are familiar with Django you will be right at home
+- but be aware that is nnot a complete implementation of their
+Queryset or Database backend.
+
+The Query object contains a method called `all()`, which will return a
+basic (unfiltered) Queryset. It will represent the set of all objects
+of the class you are querying.
 
 ~~~~~ {python}
-query = GameScore.Query.gte("score", 1000).lt("score", 2000).order("playerName")
-game_scores = query.all()
+all_scores = GameScore.Query.all()
 ~~~~~
 
-Notice how queries are built by chaining filter functions. The available filter functions are:
+Querysets are _lazily evaluated_, meaning that it will only actually
+make a request to Parse when you either call a method that needs to
+operate on the data, or when you iterate on the Queryset.
+
+==== Filtering ====
+
+Querysets can be filtered:
+
+~~~~~ {python}
+high_scores = GameScore.Query.all().gte(score=1000)
+~~~~~
+
+The available filter functions are:
 
 * **Less Than**
-    * lt(_parameter_name_, _value_)
+    * lt(**_parameters_)
 * **Less Than Or Equal To**
-    * lte(_parameter_name_, _value_)
+    * lte(**_parameters_)
 * **Greater Than**
-    * gt(_parameter_name_, _value_)
+    * gt(**_parameters_)
 * **Greater Than Or Equal To**
-    * gte(_parameter_name_, _value_)
+    * gte(**_parameters_)
 * **Not Equal To**
-    * ne(_parameter_name_, _value_)
-* **Limit**
-    * limit(_count_)
-* **Skip**
-    * skip(_count_)
+    * ne(**_parameters_)
+* **Equal to**
+    * eq(**_parameters_) // alias: where
 
-We can also order the results using:
 
-* **Order**
-    * order(_parameter_name_, _descending_=False)
+**Warning**: We may change the way to use filtering functions in the
+  near future, and favor a parameter-suffix based approach (similar to
+  Django)
+             
+
+==== Sorting/Ordering ==== 
+
+Querysets can also be ordered. Just define the name of the attribute
+that you want to use to sort. Appending a "-" in front of the name
+will sort the set in descending order. 
+
+~~~~~ {python}
+low_to_high_score_board = GameScore.Query.all().order_by("score")
+high_to_low_score_board = GameScore.Query.all().order_by("-score") # or order_by("score", descending=True)
+~~~~~
+
+==== Limit/Skip ====
+
+If you don't want the whole set, you can apply the
+limit and skip function. Let's say you have a have classes
+representing a blog, and you want to implement basic pagination:
+
+~~~~~ {python}
+posts = Post.Query.all().order_by("-publication_date")
+page_one = posts.limit(10) # Will return the most 10 recent posts.
+page_two = posts.skip(10).limit(10) # Will return posts 11-20
+~~~~~
+
+==== Composability/Chaining of Querysets ==== 
+
+The example above can show the most powerful aspect of Querysets, that
+is the ability to make complex querying and filtering by chaining calls:
+
+Most importantly, Querysets can be chained together. This allows you
+to make more complex queries:
+
+~~~~~ {python}
+posts_by_joe = Post.Query.all().where(author='Joe').order_by("view_count")
+popular_posts = posts_by_joe.gte(view_count=200)
+~~~~~
+
+==== Iterating on Querysets ====
+
+After all the querying/filtering/sorting, you will probably want to do
+something with the results. Querysets can be iterated on:
+
+~~~~~ {python}
+posts_by_joe = Post.Query.all().where(author='Joe').order_by('view_count')
+for post in posts_by_joe:
+   print post.title, post.publication_date, post.text
+~~~~~
+
+**TODO**: Slicing of Querysets
+
 
 Users
 -----

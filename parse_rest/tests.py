@@ -166,46 +166,46 @@ class TestQuery(unittest.TestCase):
 
         # test the two exceptions get can raise
         self.assertRaises(query.QueryResourceDoesNotExist,
-                          GameScore.Query.all().gt("score", 20).get)
+                          GameScore.Query.all().gt(score=20).get)
         self.assertRaises(query.QueryResourceMultipleResultsReturned,
-                          GameScore.Query.all().gt("score", 3).get)
+                          GameScore.Query.all().gt(score=3).get)
 
     def testComparisons(self):
         """test comparison operators- gt, gte, lt, lte, ne"""
-        scores_gt_3 = list(GameScore.Query.all().gt("score", 3))
+        scores_gt_3 = list(GameScore.Query.all().gt(score=3))
         self.assertEqual(len(scores_gt_3), 2)
         self.assert_(all([s.score > 3 for s in scores_gt_3]))
 
-        scores_gte_3 = list(GameScore.Query.all().gte("score", 3))
+        scores_gte_3 = list(GameScore.Query.all().gte(score=3))
         self.assertEqual(len(scores_gte_3), 3)
         self.assert_(all([s.score >= 3 for s in scores_gt_3]))
 
-        scores_lt_4 = list(GameScore.Query.all().lt("score", 4))
+        scores_lt_4 = list(GameScore.Query.all().lt(score=4))
         self.assertEqual(len(scores_lt_4), 3)
         self.assert_(all([s.score < 4 for s in scores_lt_4]))
 
-        scores_lte_4 = list(GameScore.Query.all().lte("score", 4))
+        scores_lte_4 = list(GameScore.Query.all().lte(score=4))
         self.assertEqual(len(scores_lte_4), 4)
         self.assert_(all([s.score <= 4 for s in scores_lte_4]))
 
-        scores_ne_2 = list(GameScore.Query.all().ne("score", 2))
+        scores_ne_2 = list(GameScore.Query.all().ne(score=2))
         self.assertEqual(len(scores_ne_2), 4)
         self.assert_(all([s.score != 2 for s in scores_ne_2]))
 
         # test chaining
-        lt_4_gt_2 = list(GameScore.Query.all().lt("score", 4).gt("score", 2))
+        lt_4_gt_2 = list(GameScore.Query.all().lt(score=4).gt(score=2))
         self.assert_(len(lt_4_gt_2) == 1, "chained lt+gt not working")
         self.assert_(lt_4_gt_2[0].score == 3, "chained lt+gt not working")
-        q = GameScore.Query.all().gt("score", 3).lt("score", 3)
+        q = GameScore.Query.all().gt(score=3).lt(score=3)
         self.assert_(not q.exists(), "chained lt+gt not working")
 
     def testOptions(self):
         """test three options- order, limit, and skip"""
-        scores_ordered = list(GameScore.Query.all().order("score"))
+        scores_ordered = list(GameScore.Query.all().order_by("score"))
         self.assertEqual([s.score for s in scores_ordered],
                          [1, 2, 3, 4, 5])
 
-        scores_ordered_desc = list(GameScore.Query.all().order("score", True))
+        scores_ordered_desc = list(GameScore.Query.all().order_by("score", descending=True))
         self.assertEqual([s.score for s in scores_ordered_desc],
                          [5, 4, 3, 2, 1])
 

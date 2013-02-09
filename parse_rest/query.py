@@ -39,10 +39,28 @@ class QueryManager(object):
         return Queryset(self)
 
     def where(self, **kw):
-        return Queryset(self).where(**kw)
+        return self.all().where(**kw)
+
+    def lt(self, name, value):
+        return self.all().lt(name=value)
+
+    def lte(self, name, value):
+        return self.all().lte(name=value)
+
+    def ne(self, name, value):
+        return self.all().ne(name=value)
+
+    def gt(self, name, value):
+        return self.all().gt(name=value)
+
+    def gte(self, name, value):
+        return self.all().gte(name=value)
+
+    def fetch(self):
+        return self.all().fetch()
 
     def get(self, **kw):
-        return Queryset(self).where(**kw).get()
+        return self.where(**kw).get()
 
 
 class QuerysetMetaclass(type):
@@ -51,14 +69,15 @@ class QuerysetMetaclass(type):
         cls = super(QuerysetMetaclass, cls).__new__(cls, name, bases, dct)
 
         # add comparison functions and option functions
-        for fname in ["lt", "lte", "gt", "gte", "ne"]:
-            def func(self, name, value, fname=fname):
+        for fname in ['lt', 'lte', 'gt', 'gte', 'ne']:
+            def func(self, fname=fname, **kwargs):
                 s = copy.deepcopy(self)
-                s._where[name]["$" + fname] = value
+                for name, value in kwargs.items():
+                    s._where[name]['$' + fname] = value
                 return s
             setattr(cls, fname, func)
 
-        for fname in ["limit", "skip"]:
+        for fname in ['limit', 'skip']:
             def func(self, value, fname=fname):
                 s = copy.deepcopy(self)
                 s._options[fname] = value
@@ -79,30 +98,24 @@ class Queryset(object):
     def __iter__(self):
         return iter(self._fetch())
 
-    def copy_method(f):
-        """Represents functions that have to make a copy before running"""
-        def newf(self, *a, **kw):
-            s = copy.deepcopy(self)
-            return f(s, *a, **kw)
-        return newf
+    def _fetch(self):
+        options = dict(self._options)  # make a local copy
+        if self._where:
+            # JSON encode WHERE values
+            where = json.dumps(self._where)
+            options.update({'where': where})
 
-    def all(self):
-        """return as a list"""
-        return list(self)
+        return self._manager._fetch(**options)
 
-    @copy_method
     def where(self, **kw):
-        for key, value in kw.items():
-            self = self.eq(key, value)
+        return self.eq(**kw)
+
+    def eq(self, **kw):
+        for name, value in kw.items():
+            self._where[name] = value
         return self
 
-    @copy_method
-    def eq(self, name, value):
-        self._where[name] = value
-        return self
-
-    @copy_method
-    def order(self, order, descending=False):
+    def order_by(self, order, descending=False):
         # add a minus sign before the order value if descending == True
         self._options['order'] = descending and ('-' + order) or order
         return self
@@ -123,11 +136,5 @@ class Queryset(object):
             raise QueryResourceMultipleResultsReturned
         return results[0]
 
-    def _fetch(self):
-        options = dict(self._options)  # make a local copy
-        if self._where:
-            # JSON encode WHERE values
-            where = json.dumps(self._where)
-            options.update({'where': where})
-
-        return self._manager._fetch(**options)
+    def __repr__(self):
+        return unicode(self._fetch())

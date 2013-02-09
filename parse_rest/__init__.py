@@ -289,6 +289,9 @@ class ParseResource(ParseBase, Pointer):
     createdAt = property(_get_created_datetime, _set_created_datetime)
     updatedAt = property(_get_updated_datetime, _set_updated_datetime)
 
+    def __repr__(self):
+        return '<%s:%s>' % (unicode(self.__class__.__name__), self.objectId)
+
 
 class ObjectMetaclass(type):
     def __new__(cls, name, bases, dct):
@@ -397,6 +400,8 @@ class User(ParseResource):
         except Exception, why:
             return False
 
+    def __repr__(self):
+        return '<User:%s (Id %s)>' % (self.username, self.objectId)
 
 User.Query = QueryManager(User)
 
