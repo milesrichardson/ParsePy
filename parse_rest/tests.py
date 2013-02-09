@@ -318,13 +318,6 @@ class TestUser(unittest.TestCase):
         self.assert_(parse_rest.User.Query.where(phone=phone_number).exists(),
                      'Failed to update user data. New info not on Parse')
 
-    def testCanQueryBySession(self):
-        parse_rest.User.signup(self.username, self.password)
-        logged = parse_rest.User.login(self.username, self.password)
-        queried = parse_rest.User.Query.get(sessionToken=logged.sessionToken)
-        self.assert_(queried.objectId == logged.objectId,
-                     'Could not find user %s by session' % logged.username)
-
 if __name__ == "__main__":
     # command line
     unittest.main()
