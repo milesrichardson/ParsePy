@@ -192,7 +192,7 @@ gameScore = GameScore.Query.get(objectId="xxwXx9eOec")
 
 To query for sets of objects, we work with the concept of
 `Queryset`s. If you are familiar with Django you will be right at home
-- but be aware that is nnot a complete implementation of their
+\- but be aware that is not a complete implementation of their
 Queryset or Database backend.
 
 The Query object contains a method called `all()`, which will return a
@@ -207,7 +207,7 @@ Querysets are _lazily evaluated_, meaning that it will only actually
 make a request to Parse when you either call a method that needs to
 operate on the data, or when you iterate on the Queryset.
 
-==== Filtering ====
+#### Filtering
 
 Querysets can be filtered:
 
@@ -236,7 +236,7 @@ The available filter functions are:
   Django)
              
 
-==== Sorting/Ordering ==== 
+#### Sorting/Ordering 
 
 Querysets can also be ordered. Just define the name of the attribute
 that you want to use to sort. Appending a "-" in front of the name
@@ -247,7 +247,7 @@ low_to_high_score_board = GameScore.Query.all().order_by("score")
 high_to_low_score_board = GameScore.Query.all().order_by("-score") # or order_by("score", descending=True)
 ~~~~~
 
-==== Limit/Skip ====
+#### Limit/Skip
 
 If you don't want the whole set, you can apply the
 limit and skip function. Let's say you have a have classes
@@ -259,7 +259,7 @@ page_one = posts.limit(10) # Will return the most 10 recent posts.
 page_two = posts.skip(10).limit(10) # Will return posts 11-20
 ~~~~~
 
-==== Composability/Chaining of Querysets ==== 
+#### Composability/Chaining of Querysets 
 
 The example above can show the most powerful aspect of Querysets, that
 is the ability to make complex querying and filtering by chaining calls:
@@ -272,7 +272,7 @@ posts_by_joe = Post.Query.all().where(author='Joe').order_by("view_count")
 popular_posts = posts_by_joe.gte(view_count=200)
 ~~~~~
 
-==== Iterating on Querysets ====
+#### Iterating on Querysets
 
 After all the querying/filtering/sorting, you will probably want to do
 something with the results. Querysets can be iterated on:
