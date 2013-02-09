@@ -13,27 +13,17 @@
 
 import __init__ as parse_rest
 from __init__ import API_ROOT, ParseResource
-from query import QueryManager, Query
+from query import QueryManager
 
 
 class InstallationManager(QueryManager):
     def __init__(self):
         self._model_class = Installation
 
-
-class InstallationQuery(Query):
-    def _fetch(self):
-        opts = dict(self._options)  # make a local copy
-        if self._where:
-            # JSON encode WHERE values
-            where = json.dumps(self._where)
-            opts.update({'where': where})
-
-        extra_headers = {'X-Parse-Master-Key': parse_rest.MASTER_KEY}
-        klass = self._manager.model_class
-        uri = self._manager.model_class.ENDPOINT_ROOT
-        return [klass(**it) for it in klass.GET(uri, **options).get('results')]
-
+    def _fetch(self, **kw):
+        kw['extra_headers'] = {'X-Parse-Master-Key': parse_rest.MASTER_KEY}
+        response = Installation.GET(Installation.ENDPOINT_ROOT, **kw)
+        return [Installation(**it) for it in response.get('results')]
 
 class Installation(ParseResource):
     ENDPOINT_ROOT = '/'.join([API_ROOT, 'installations'])

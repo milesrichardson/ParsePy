@@ -102,7 +102,7 @@ class TestObject(unittest.TestCase):
         self.sao_paulo.save()
         self.assert_(type(self.sao_paulo.updatedAt) == datetime.datetime)
 
-        city = City.Query.where(name='São Paulo').get()
+        city = City.Query.get(name='São Paulo')
         self.assert_(city.country == 'Brazil', 'Could not update object')
 
     def testCanDeleteExistingObject(self):
@@ -127,7 +127,7 @@ class TestObject(unittest.TestCase):
         self.score.save()
 
         # get the object, see if it has saved
-        qs = GameScore.Query.where(objectId=self.score.objectId).get()
+        qs = GameScore.Query.get(objectId=self.score.objectId)
         self.assert_(isinstance(qs.item, Object),
                      "Associated CollectedItem is not of correct class")
         self.assert_(qs.item.type == "Sword",
@@ -166,53 +166,53 @@ class TestQuery(unittest.TestCase):
 
         # test the two exceptions get can raise
         self.assertRaises(query.QueryResourceDoesNotExist,
-                          GameScore.Query.gt("score", 20).get)
+                          GameScore.Query.all().gt("score", 20).get)
         self.assertRaises(query.QueryResourceMultipleResultsReturned,
-                          GameScore.Query.gt("score", 3).get)
+                          GameScore.Query.all().gt("score", 3).get)
 
     def testComparisons(self):
         """test comparison operators- gt, gte, lt, lte, ne"""
-        scores_gt_3 = list(GameScore.Query.gt("score", 3))
+        scores_gt_3 = list(GameScore.Query.all().gt("score", 3))
         self.assertEqual(len(scores_gt_3), 2)
         self.assert_(all([s.score > 3 for s in scores_gt_3]))
 
-        scores_gte_3 = list(GameScore.Query.gte("score", 3))
+        scores_gte_3 = list(GameScore.Query.all().gte("score", 3))
         self.assertEqual(len(scores_gte_3), 3)
         self.assert_(all([s.score >= 3 for s in scores_gt_3]))
 
-        scores_lt_4 = list(GameScore.Query.lt("score", 4))
+        scores_lt_4 = list(GameScore.Query.all().lt("score", 4))
         self.assertEqual(len(scores_lt_4), 3)
         self.assert_(all([s.score < 4 for s in scores_lt_4]))
 
-        scores_lte_4 = list(GameScore.Query.lte("score", 4))
+        scores_lte_4 = list(GameScore.Query.all().lte("score", 4))
         self.assertEqual(len(scores_lte_4), 4)
         self.assert_(all([s.score <= 4 for s in scores_lte_4]))
 
-        scores_ne_2 = list(GameScore.Query.ne("score", 2))
+        scores_ne_2 = list(GameScore.Query.all().ne("score", 2))
         self.assertEqual(len(scores_ne_2), 4)
         self.assert_(all([s.score != 2 for s in scores_ne_2]))
 
         # test chaining
-        lt_4_gt_2 = list(GameScore.Query.lt("score", 4).gt("score", 2))
+        lt_4_gt_2 = list(GameScore.Query.all().lt("score", 4).gt("score", 2))
         self.assert_(len(lt_4_gt_2) == 1, "chained lt+gt not working")
         self.assert_(lt_4_gt_2[0].score == 3, "chained lt+gt not working")
-        q = GameScore.Query.gt("score", 3).lt("score", 3)
+        q = GameScore.Query.all().gt("score", 3).lt("score", 3)
         self.assert_(not q.exists(), "chained lt+gt not working")
 
     def testOptions(self):
         """test three options- order, limit, and skip"""
-        scores_ordered = list(GameScore.Query.order("score"))
+        scores_ordered = list(GameScore.Query.all().order("score"))
         self.assertEqual([s.score for s in scores_ordered],
                          [1, 2, 3, 4, 5])
 
-        scores_ordered_desc = list(GameScore.Query.order("score", True))
+        scores_ordered_desc = list(GameScore.Query.all().order("score", True))
         self.assertEqual([s.score for s in scores_ordered_desc],
                          [5, 4, 3, 2, 1])
 
-        scores_limit_3 = list(GameScore.Query.limit(3))
+        scores_limit_3 = list(GameScore.Query.all().limit(3))
         self.assert_(len(scores_limit_3) == 3, "Limit did not return 3 items")
 
-        scores_skip_3 = list(GameScore.Query.skip(3))
+        scores_skip_3 = list(GameScore.Query.all().skip(3))
         self.assert_(len(scores_skip_3) == 2, "Skip did not return 2 items")
 
     def tearDown(self):
@@ -321,8 +321,7 @@ class TestUser(unittest.TestCase):
     def testCanQueryBySession(self):
         parse_rest.User.signup(self.username, self.password)
         logged = parse_rest.User.login(self.username, self.password)
-        queried = parse_rest.User.Query.where(sessionToken=logged.sessionToken
-                                                                    ).get()
+        queried = parse_rest.User.Query.get(sessionToken=logged.sessionToken)
         self.assert_(queried.objectId == logged.objectId,
                      'Could not find user %s by session' % logged.username)
 

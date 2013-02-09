@@ -30,6 +30,11 @@ class QueryManager(object):
     def __init__(self, model_class):
         self.model_class = model_class
 
+    def _fetch(self, **kw):
+        klass = self.model_class
+        uri = self.model_class.ENDPOINT_ROOT
+        return [klass(**it) for it in klass.GET(uri, **kw).get('results')]
+
     def all(self):
         return Queryset(self)
 
@@ -66,8 +71,8 @@ class QuerysetMetaclass(type):
 class Queryset(object):
     __metaclass__ = QuerysetMetaclass
 
-    def __init__(self, model_class):
-        self.model_class = model_class
+    def __init__(self, manager):
+        self._manager = manager
         self._where = collections.defaultdict(dict)
         self._options = {}
 
@@ -102,6 +107,10 @@ class Queryset(object):
         self._options['order'] = descending and ('-' + order) or order
         return self
 
+    def count(self):
+        results = self._fetch()
+        return len(results)
+
     def exists(self):
         results = self._fetch()
         return len(results) > 0
@@ -121,6 +130,4 @@ class Queryset(object):
             where = json.dumps(self._where)
             options.update({'where': where})
 
-        klass = self.model_class
-        uri = self.model_class.ENDPOINT_ROOT
-        return [klass(**it) for it in klass.GET(uri, **options).get('results')]
+        return self._manager._fetch(**options)

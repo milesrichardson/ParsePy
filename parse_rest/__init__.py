@@ -21,7 +21,7 @@ import re
 import logging
 
 
-from query import Queryset
+from query import QueryManager
 
 API_ROOT = 'https://api.parse.com/1'
 
@@ -294,7 +294,7 @@ class ObjectMetaclass(type):
     def __new__(cls, name, bases, dct):
         cls = super(ObjectMetaclass, cls).__new__(cls, name, bases, dct)
         cls.set_endpoint_root()
-        cls.Query = Queryset(cls)
+        cls.Query = QueryManager(cls)
         return cls
 
 
@@ -398,7 +398,7 @@ class User(ParseResource):
             return False
 
 
-User.Query = Queryset(User)
+User.Query = QueryManager(User)
 
 
 class ParseError(Exception):
