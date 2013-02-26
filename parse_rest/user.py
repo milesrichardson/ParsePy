@@ -39,7 +39,15 @@ class User(ParseResource):
         'username', 'sessionToken']
 
     def is_authenticated(self):
-        return getattr(self, 'sessionToken', None) or False
+        return self.authenticate(self.sessionToken)
+
+    def authenticate(self, session_token):
+        self.sessionToken = session_token
+        try:
+            self.save()
+            return True
+        except:
+            return False
 
     @login_required
     def save(self):
