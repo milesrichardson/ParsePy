@@ -13,6 +13,7 @@
 
 import base64
 import datetime
+import urllib2
 
 from __init__ import ParseBase, API_ROOT
 from query import QueryManager
