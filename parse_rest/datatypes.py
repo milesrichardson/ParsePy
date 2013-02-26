@@ -143,13 +143,11 @@ class File(ParseType):
 
     @classmethod
     def from_native(cls, **kw):
-        return cls(kw.get('url'), kw.get('name'))
+        return cls(kw.get('name'))
 
-    def __init__(self, url, name):
-        request = urllib2.Request(url)
+    def __init__(self, name):
         self._name = name
-        self._url = url
-        self._file = urllib2.urlopen(request)
+        self._url = '/'.join([API_ROOT, 'files', name])
 
     def _to_native(self):
         return {
@@ -157,6 +155,7 @@ class File(ParseType):
             'name': self._name
             }
 
+    url = property(lambda self: self._url)
 
 class ParseResource(ParseBase, Pointer):
 
