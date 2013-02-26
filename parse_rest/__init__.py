@@ -19,16 +19,53 @@ import datetime
 
 API_ROOT = 'https://api.parse.com/1'
 
-APPLICATION_ID = ''
-REST_API_KEY = ''
-MASTER_KEY = ''
+
+class ParseError(Exception):
+    '''Base exceptions from requests made to Parse'''
+    pass
+
+
+class ResourceRequestBadRequest(ParseError):
+    '''Request returns a 400'''
+    pass
+
+
+class ResourceRequestLoginRequired(ParseError):
+    '''Request returns a 401'''
+    pass
+
+
+class ResourceRequestForbidden(ParseError):
+    '''Request returns a 403'''
+    pass
+
+
+class ResourceRequestNotFound(ParseError):
+    '''Request returns a 404'''
+    pass
 
 
 class ParseBase(object):
     ENDPOINT_ROOT = API_ROOT
 
     @classmethod
+    def register(cls, app_id, rest_key, master_key, **kw):
+        ParseBase.CONNECTION = {
+            'APPLICATION_ID': app_id,
+            'REST_API_KEY':rest_key,
+            'MASTER_KEY': master_key
+            }
+
+
+    @classmethod
     def execute(cls, uri, http_verb, extra_headers=None, **kw):
+        if not ParseBase.CONNECTION:
+            raise ParseError('Missing connection credentials')
+
+
+        app_id = ParseBase.CONNECTION.get('APPLICATION_ID')
+        rest_key = ParseBase.CONNECTION.get('REST_API_KEY')
+
         headers = extra_headers or {}
         url = uri if uri.startswith(API_ROOT) else cls.ENDPOINT_ROOT + uri
         data = kw and json.dumps(kw) or "{}"
@@ -36,14 +73,10 @@ class ParseBase(object):
             url += '?%s' % urllib.urlencode(kw)
             data = None
 
-        if APPLICATION_ID == "" or REST_API_KEY == "":
-            raise ParseError("Must set parse_rest.APPLICATION_ID and " +
-                             "parse_rest.REST_API_KEY")
-
         request = urllib2.Request(url, data, headers)
         request.add_header('Content-type', 'application/json')
-        request.add_header("X-Parse-Application-Id", APPLICATION_ID)
-        request.add_header("X-Parse-REST-API-Key", REST_API_KEY)
+        request.add_header("X-Parse-Application-Id", app_id)
+        request.add_header("X-Parse-REST-API-Key", rest_key)
 
         request.get_method = lambda: http_verb
 
@@ -76,26 +109,7 @@ class ParseBase(object):
         return cls.execute(uri, 'DELETE', **kw)
 
 
-class ParseError(Exception):
-    '''Base exceptions from requests made to Parse'''
-    pass
-
-
-class ResourceRequestBadRequest(ParseError):
-    '''Request returns a 400'''
-    pass
-
-
-class ResourceRequestLoginRequired(ParseError):
-    '''Request returns a 401'''
-    pass
-
-
-class ResourceRequestForbidden(ParseError):
-    '''Request returns a 403'''
-    pass
-
-
-class ResourceRequestNotFound(ParseError):
-    '''Request returns a 404'''
-    pass
+__all__ = [
+    'ParseBase', 'ResourceRequestBadRequest', 'ResourceLoginRequired',
+    'ResourceRequestForbidden', 'ResourceRequestNotFound'
+    ]
