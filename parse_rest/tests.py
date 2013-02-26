@@ -6,22 +6,23 @@ Contains unit tests for the Python Parse REST API wrapper
 """
 
 import os
+import sys
 import subprocess
 import unittest
 import urllib2
 import datetime
 
 import __init__ as parse_rest
-from __init__ import GeoPoint, Object
+from datatypes import GeoPoint, Object
+from function import Function
+from user import User
 import query
-
 
 try:
     import settings_local
 except ImportError:
-    raise ImportError('You must create a settings_local.py file with an ' +
-                      'APPLICATION_ID, REST_API_KEY, and a MASTER_KEY ' +
-                      'to run tests.')
+    sys.exit('You must create a settings_local.py file with APPLICATION_ID, ' \
+                 'REST_API_KEY, MASTER_KEY variables set')
 
 parse_rest.APPLICATION_ID = getattr(settings_local, 'APPLICATION_ID', '')
 parse_rest.REST_API_KEY = getattr(settings_local, 'REST_API_KEY', '')
@@ -86,15 +87,21 @@ class TestObject(unittest.TestCase):
     def testCanInstantiateParseType(self):
         self.assert_(self.sao_paulo.location.latitude == -23.5)
 
+    def testCanSaveDates(self):
+        now = datetime.datetime.now()
+        self.score.last_played = now
+        self.score.save()
+        self.assert_(self.score.last_played == now, 'Could not save date')
+
     def testCanCreateNewObject(self):
         self.score.save()
-        self.assert_(self.score.objectId is not None, 'Can not create object')
+        object_id = self.score.objectId
 
-        self.assert_(type(self.score.objectId) == unicode)
+        self.assert_(object_id is not None, 'Can not create object')
+        self.assert_(type(object_id) == unicode)
         self.assert_(type(self.score.createdAt) == datetime.datetime)
-        self.assert_(GameScore.Query.where(
-                        objectId=self.score.objectId).exists(),
-                        'Can not create object')
+        self.assert_(GameScore.Query.where(objectId=object_id).exists(),
+                     'Can not create object')
 
     def testCanUpdateExistingObject(self):
         self.sao_paulo.save()
@@ -142,8 +149,9 @@ class TestQuery(unittest.TestCase):
         for s in GameScore.Query.all():
             s.delete()
 
-        self.scores = [GameScore(score=s, player_name='John Doe')
-                            for s in range(1, 6)]
+        self.scores = [
+            GameScore(score=s, player_name='John Doe') for s in range(1, 6)
+            ]
         for s in self.scores:
             s.save()
 
@@ -166,9 +174,17 @@ class TestQuery(unittest.TestCase):
 
         # test the two exceptions get can raise
         self.assertRaises(query.QueryResourceDoesNotExist,
-                          GameScore.Query.all().gt(score=20).get)
+                          GameScore.Query.gt(score=20).get)
         self.assertRaises(query.QueryResourceMultipleResultsReturned,
-                          GameScore.Query.all().gt(score=3).get)
+                          GameScore.Query.gt(score=3).get)
+
+
+    def testCanQueryDates(self):
+        last_week = datetime.datetime.now() - datetime.timedelta(days=7)
+        score = GameScore(name='test', last_played=last_week)
+        score.save()
+        self.assert_(GameScore.Query.where(last_played=last_week).exists(),
+                     'Could not run query with dates')
 
     def testComparisons(self):
         """test comparison operators- gt, gte, lt, lte, ne"""
@@ -215,6 +231,13 @@ class TestQuery(unittest.TestCase):
         scores_skip_3 = list(GameScore.Query.all().skip(3))
         self.assert_(len(scores_skip_3) == 2, "Skip did not return 2 items")
 
+    def testCanCompareDateInequality(self):
+        today = datetime.datetime.today()
+        tomorrow = today + datetime.timedelta(days=1)
+        yesterday = today - datetime.timedelta(days=1)
+        self.assert_(GameScore.Query.lte(createdAt=tomorrow).count() == 5,
+                     'Could not make inequality comparison with dates')
+
     def tearDown(self):
         """delete all GameScore objects"""
         for s in GameScore.Query.all():
@@ -225,6 +248,7 @@ class TestFunction(unittest.TestCase):
     def setUp(self):
         """create and deploy cloud functions"""
         original_dir = os.getcwd()
+
         cloud_function_dir = os.path.join(os.path.split(__file__)[0],
                                           "cloudcode")
         os.chdir(cloud_function_dir)
@@ -234,9 +258,10 @@ class TestFunction(unittest.TestCase):
                                            settings_local.MASTER_KEY))
         try:
             subprocess.call(["parse", "deploy"])
-        except OSError:
-            raise OSError("parse command line tool must be installed " +
-                          "(see https://www.parse.com/docs/cloud_code_guide)")
+        except OSError, why:
+            print "parse command line tool must be installed " \
+                "(see https://www.parse.com/docs/cloud_code_guide)"
+            self.skipTest(why)
         os.chdir(original_dir)
 
     def tearDown(self):
@@ -246,7 +271,8 @@ class TestFunction(unittest.TestCase):
     def test_simple_functions(self):
         """test hello world and averageStars functions"""
         # test the hello function- takes no arguments
-        hello_world_func = parse_rest.Function("hello")
+
+        hello_world_func = Function("hello")
         ret = hello_world_func()
         self.assertEqual(ret["result"], u"Hello world!")
 
@@ -257,7 +283,7 @@ class TestFunction(unittest.TestCase):
         r2 = Review(movie="The Matrix", stars=4, comment="It's OK.")
         r2.save()
 
-        star_func = parse_rest.Function("averageStars")
+        star_func = Function("averageStars")
         ret = star_func(movie="The Matrix")
         self.assertAlmostEqual(ret["result"], 4.5)
 
@@ -268,9 +294,9 @@ class TestUser(unittest.TestCase):
 
     def _get_user(self):
         try:
-            user = parse_rest.User.signup(self.username, self.password)
+            user = User.signup(self.username, self.password)
         except:
-            user = parse_rest.User.Query.get(username=self.username)
+            user = User.Query.get(username=self.username)
         return user
 
     def _destroy_user(self):
@@ -278,8 +304,8 @@ class TestUser(unittest.TestCase):
         user and user.delete()
 
     def _get_logged_user(self):
-        if parse_rest.User.Query.where(username=self.username).exists():
-            return parse_rest.User.login(self.username, self.password)
+        if User.Query.where(username=self.username).exists():
+            return User.login(self.username, self.password)
         else:
             return self._get_user()
 
@@ -288,7 +314,7 @@ class TestUser(unittest.TestCase):
         self.password = TestUser.PASSWORD
 
         try:
-            u = parse_rest.User.login(self.USERNAME, self.PASSWORD)
+            u = User.login(self.USERNAME, self.PASSWORD)
         except parse_rest.ResourceRequestNotFound as e:
             # if the user doesn't exist, that's fine
             return
@@ -299,12 +325,12 @@ class TestUser(unittest.TestCase):
 
     def testCanSignUp(self):
         self._destroy_user()
-        user = parse_rest.User.signup(self.username, self.password)
+        user = User.signup(self.username, self.password)
         self.assert_(user is not None)
 
     def testCanLogin(self):
         self._get_user()  # User should be created here.
-        user = parse_rest.User.login(self.username, self.password)
+        user = User.login(self.username, self.password)
         self.assert_(user.is_authenticated(), 'Login failed')
 
     def testCanUpdate(self):
@@ -315,7 +341,7 @@ class TestUser(unittest.TestCase):
         user.phone = phone_number
         user.save()
 
-        self.assert_(parse_rest.User.Query.where(phone=phone_number).exists(),
+        self.assert_(User.Query.where(phone=phone_number).exists(),
                      'Failed to update user data. New info not on Parse')
 
 if __name__ == "__main__":

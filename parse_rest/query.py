@@ -15,7 +15,6 @@ import json
 import collections
 import copy
 
-
 class QueryResourceDoesNotExist(Exception):
     '''Query returned no results'''
     pass
@@ -41,20 +40,20 @@ class QueryManager(object):
     def where(self, **kw):
         return self.all().where(**kw)
 
-    def lt(self, name, value):
-        return self.all().lt(name=value)
+    def lt(self, **kw):
+        return self.all().lt(**kw)
 
-    def lte(self, name, value):
-        return self.all().lte(name=value)
+    def lte(self, **kw):
+        return self.all().lte(**kw)
 
-    def ne(self, name, value):
-        return self.all().ne(name=value)
+    def ne(self, **kw):
+        return self.all().ne(**kw)
 
-    def gt(self, name, value):
-        return self.all().gt(name=value)
+    def gt(self, **kw):
+        return self.all().gt(**kw)
 
-    def gte(self, name, value):
-        return self.all().gte(name=value)
+    def gte(self, **kw):
+        return self.all().gte(**kw)
 
     def fetch(self):
         return self.all().fetch()
@@ -72,15 +71,15 @@ class QuerysetMetaclass(type):
         for fname in ['lt', 'lte', 'gt', 'gte', 'ne']:
             def func(self, fname=fname, **kwargs):
                 s = copy.deepcopy(self)
-                for name, value in kwargs.items():
-                    s._where[name]['$' + fname] = value
+                for k, v in kwargs.items():
+                    s._where[k]['$' + fname] = cls.convert_to_parse(v)
                 return s
             setattr(cls, fname, func)
 
         for fname in ['limit', 'skip']:
             def func(self, value, fname=fname):
                 s = copy.deepcopy(self)
-                s._options[fname] = value
+                s._options[fname] = int(value)
                 return s
             setattr(cls, fname, func)
 
@@ -89,6 +88,11 @@ class QuerysetMetaclass(type):
 
 class Queryset(object):
     __metaclass__ = QuerysetMetaclass
+
+    @staticmethod
+    def convert_to_parse(value):
+        from datatypes import ParseType
+        return ParseType.convert_to_parse(value)
 
     def __init__(self, manager):
         self._manager = manager
@@ -112,7 +116,7 @@ class Queryset(object):
 
     def eq(self, **kw):
         for name, value in kw.items():
-            self._where[name] = value
+            self._where[name] = Queryset.convert_to_parse(value)
         return self
 
     def order_by(self, order, descending=False):
