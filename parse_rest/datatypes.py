@@ -39,19 +39,30 @@ class ParseType(object):
         return native and native.from_native(**parse_data) or parse_data
 
     @staticmethod
-    def convert_to_parse(python_object):
+    def convert_to_parse(python_object, as_pointer=False):
+        is_object = isinstance(python_object, Object)
+
+        if is_object and not as_pointer:
+            return dict([(k, ParseType.convert_to_parse(v, as_pointer=True))
+                         for k, v in python_object._editable_attrs
+                         ])
+
+        python_type = Object if is_object else type(python_object)
+
+        # classes that need to be cast to a different type before serialization
+        transformation_map = {
+            datetime.datetime: Date,
+            Object: Pointer
+            }
+
+        if python_type in transformation_map:
+            klass = transformation_map.get(python_type)
+            return klass(python_object)._to_native()
+
         if isinstance(python_object, ParseType):
             return python_object._to_native()
 
-        # This seems rather pointless now that we are only working
-        # with dates. Perhaps when files/images start to get a little
-        # more attention, we will have more things here.
-        python_type = type(python_object)
-        klass = {
-            datetime.datetime: Date
-            }.get(python_type)
-
-        return klass(python_object)._to_native() if klass else python_object
+        return python_object
 
     @classmethod
     def from_native(cls, **kw):
@@ -68,11 +79,14 @@ class Pointer(ParseType):
         klass = Object.factory(kw.get('className'))
         return klass.retrieve(kw.get('objectId'))
 
+    def __init__(self, obj):
+        self._object = obj
+
     def _to_native(self):
         return {
             '__type': 'Pointer',
-            'className': self.__class__.__name__,
-            'objectId': self.objectId
+            'className': self._object.__class__.__name__,
+            'objectId': self._object.objectId
             }
 
 
@@ -143,11 +157,13 @@ class File(ParseType):
 
     @classmethod
     def from_native(cls, **kw):
-        return cls(kw.get('name'))
+        return cls(**kw)
 
-    def __init__(self, name):
+    def __init__(self, **kw):
+        name = kw.get('name')
         self._name = name
-        self._url = '/'.join([API_ROOT, 'files', name])
+        self._api_url = '/'.join([API_ROOT, 'files', name])
+        self._file_url = kw.get('url')
 
     def _to_native(self):
         return {
@@ -155,7 +171,10 @@ class File(ParseType):
             'name': self._name
             }
 
-    url = property(lambda self: self._url)
+    url = property(lambda self: self._file_url)
+    name = property(lambda self: self._name)
+    _absolute_url = property(lambda self: self._api_url)
+
 
 class ParseResource(ParseBase, Pointer):
 
@@ -165,37 +184,35 @@ class ParseResource(ParseBase, Pointer):
     def retrieve(cls, resource_id):
         return cls(**cls.GET('/' + resource_id))
 
+    @property
+    def _editable_attrs(self):
+        protected_attrs = self.__class__.PROTECTED_ATTRIBUTES
+        allowed = lambda a: a not in protected_attrs and not a.startswith('_')
+        return [(k, v) for k, v in self.__dict__.items() if allowed(k)]
+
     def __init__(self, **kw):
         for key, value in kw.items():
             setattr(self, key, ParseType.convert_from_parse(value))
 
-    def _to_dict(self):
-        # serializes all attributes that need to be persisted on Parse
-
-        protected_attributes = self.__class__.PROTECTED_ATTRIBUTES
-        is_protected = lambda a: a in protected_attributes or a.startswith('_')
-
-
-        return dict([(k, ParseType.convert_to_parse(v))
-                     for k, v in self.__dict__.items() if not is_protected(k)
-                     ])
+    def _to_native(self):
+        return ParseType.convert_to_parse(self)
 
     def _get_object_id(self):
-        return getattr(self, '_object_id', None)
+        return self.__dict__.get('_object_id')
 
     def _set_object_id(self, value):
-        if hasattr(self, '_object_id'):
+        if '_object_id' in self.__dict__:
             raise ValueError('Can not re-set object id')
         self._object_id = value
 
     def _get_updated_datetime(self):
-        return getattr(self, '_updated_at', None) and self._updated_at._date
+        return self.__dict__.get('_updated_at') and self._updated_at._date
 
     def _set_updated_datetime(self, value):
         self._updated_at = Date(value)
 
     def _get_created_datetime(self):
-        return getattr(self, '_created_at', None) and self._created_at._date
+        return self.__dict__.get('_created_at') and self._created_at._date
 
     def _set_created_datetime(self, value):
         self._created_at = Date(value)
@@ -207,21 +224,14 @@ class ParseResource(ParseBase, Pointer):
             self._create()
 
     def _create(self):
-        # URL: /1/classes/<className>
-        # HTTP Verb: POST
-
         uri = self.__class__.ENDPOINT_ROOT
-
-        response_dict = self.__class__.POST(uri, **self._to_dict())
+        response_dict = self.__class__.POST(uri, **self._to_native())
 
         self.createdAt = self.updatedAt = response_dict['createdAt']
         self.objectId = response_dict['objectId']
 
     def _update(self):
-        # URL: /1/classes/<className>/<objectId>
-        # HTTP Verb: PUT
-
-        response = self.__class__.PUT(self._absolute_url, **self._to_dict())
+        response = self.__class__.PUT(self._absolute_url, **self._to_native())
         self.updatedAt = response['updatedAt']
 
     def delete(self):
@@ -269,10 +279,15 @@ class Object(ParseResource):
 
     @property
     def _absolute_url(self):
-        if not self.objectId:
-            return None
-
+        if not self.objectId: return None
         return '/'.join([self.__class__.ENDPOINT_ROOT, self.objectId])
+
+    @property
+    def as_pointer(self):
+        return Pointer(**{
+                'className': self.__class__.__name__,
+                'objectId': self.objectId
+                })
 
     def increment(self, key, amount=1):
         """

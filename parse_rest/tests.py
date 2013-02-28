@@ -132,15 +132,50 @@ class TestObject(unittest.TestCase):
         """test saving and associating a different object"""
         collectedItem = CollectedItem(type="Sword", isAwesome=True)
         collectedItem.save()
+
         self.score.item = collectedItem
         self.score.save()
 
         # get the object, see if it has saved
         qs = GameScore.Query.get(objectId=self.score.objectId)
         self.assert_(isinstance(qs.item, Object),
-                     "Associated CollectedItem is not of correct class")
+                     "Associated CollectedItem is not an object")
         self.assert_(qs.item.type == "Sword",
                    "Associated CollectedItem does not have correct attributes")
+
+
+class TestTypes(unittest.TestCase):
+    def setUp(self):
+        self.now = datetime.datetime.now()
+        self.score = GameScore(
+            score=1337, player_name='John Doe', cheat_mode=False,
+            date_of_birth=self.now
+            )
+        self.sao_paulo = City(
+            name='São Paulo', location=GeoPoint(-23.5, -46.6167)
+            )
+
+    def testCanConvertToNative(self):
+        native_data = self.sao_paulo._to_native()
+        self.assert_(type(native_data) is dict, 'Can not convert object to dict')
+
+    def testCanConvertNestedLocation(self):
+        native_sao_paulo = self.sao_paulo._to_native()
+        location_dict = native_sao_paulo.get('location')
+
+        self.assert_(type(location_dict) is dict,
+                     'Expected dict after conversion. Got %s' % location_dict)
+        self.assert_(location_dict.get('latitude') == -23.5,
+                     'Can not serialize geopoint data')
+
+    def testCanConvertDate(self):
+        native_score = self.score._to_native()
+        native_date = self.score._to_native().get('date_of_birth')
+        self.assert_(type(native_date) is dict,
+                     'Could not serialize date into dict')
+        iso_date = native_date.get('iso')
+        self.assert_(iso_date == self.now.isoformat(),
+                     'Expected %s. Got %s' % (self.now.isoformat(), iso_date))
 
 
 class TestQuery(unittest.TestCase):

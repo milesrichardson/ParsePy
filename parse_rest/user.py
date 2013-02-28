@@ -13,9 +13,10 @@
 
 import base64
 import datetime
+import copy
 
 from __init__ import API_ROOT
-from datatypes import ParseResource
+from datatypes import ParseResource, ParseType
 from query import QueryManager
 
 
@@ -57,7 +58,7 @@ class User(ParseResource):
         return self.__class__.PUT(
             self._absolute_url,
             extra_headers=session_header,
-            **self._to_dict())
+            **self._to_native())
 
     @login_required
     def delete(self):
@@ -86,6 +87,10 @@ class User(ParseResource):
             return True
         except Exception, why:
             return False
+
+    def _to_native(self):
+        return dict([(k, ParseType.convert_to_parse(v, as_pointer=True))
+                     for k, v in self._editable_attrs])
 
     def __repr__(self):
         return '<User:%s (Id %s)>' % (self.username, self.objectId)
