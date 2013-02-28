@@ -44,17 +44,26 @@ class ResourceRequestNotFound(ParseError):
     '''Request returns a 404'''
     pass
 
+def master_key_required(func):
+    '''decorator describing methods that require the master key'''
+    def ret(obj, *args, **kw):
+        conn = ParseBase.CONNECTION
+        if not (conn and conn.get('master_key')):
+            message = '%s requires the master key' % func.__name__
+            raise ParseError(message)
+        func(obj, *args, **kw)
+    return ret
 
 class ParseBase(object):
     ENDPOINT_ROOT = API_ROOT
 
     @classmethod
-    def register(cls, app_id, rest_key, master_key, **kw):
+    def register(cls, app_id, rest_key, **kw):
         ParseBase.CONNECTION = {
-            'APPLICATION_ID': app_id,
-            'REST_API_KEY':rest_key,
-            'MASTER_KEY': master_key
+            'app_id': app_id,
+            'rest_key': rest_key
             }
+        ParseBase.CONNECTION.update(**kw)
 
 
     @classmethod
@@ -63,8 +72,9 @@ class ParseBase(object):
             raise ParseError('Missing connection credentials')
 
 
-        app_id = ParseBase.CONNECTION.get('APPLICATION_ID')
-        rest_key = ParseBase.CONNECTION.get('REST_API_KEY')
+        app_id = ParseBase.CONNECTION.get('app_id')
+        rest_key = ParseBase.CONNECTION.get('rest_key')
+        master_key = ParseBase.CONNECTION.get('master_key')
 
         headers = extra_headers or {}
         url = uri if uri.startswith(API_ROOT) else cls.ENDPOINT_ROOT + uri
@@ -75,20 +85,23 @@ class ParseBase(object):
 
         request = urllib2.Request(url, data, headers)
         request.add_header('Content-type', 'application/json')
-        request.add_header("X-Parse-Application-Id", app_id)
-        request.add_header("X-Parse-REST-API-Key", rest_key)
+        request.add_header('X-Parse-Application-Id', app_id)
+        request.add_header('X-Parse-REST-API-Key', rest_key)
+
+        if master_key: request.add_header('X-Parse-Master-Key', master_key)
 
         request.get_method = lambda: http_verb
 
         try:
             response = urllib2.urlopen(request)
         except urllib2.HTTPError, e:
-            raise {
+            exc = {
                 400: ResourceRequestBadRequest,
                 401: ResourceRequestLoginRequired,
                 403: ResourceRequestForbidden,
                 404: ResourceRequestNotFound
                 }.get(e.code, ParseError)
+            raise exc(e.read())
 
         return json.loads(response.read())
 

@@ -24,9 +24,11 @@ except ImportError:
     sys.exit('You must create a settings_local.py file with APPLICATION_ID, ' \
                  'REST_API_KEY, MASTER_KEY variables set')
 
-parse_rest.APPLICATION_ID = getattr(settings_local, 'APPLICATION_ID', '')
-parse_rest.REST_API_KEY = getattr(settings_local, 'REST_API_KEY', '')
-parse_rest.MASTER_KEY = getattr(settings_local, 'MASTER_KEY', '')
+parse_rest.ParseBase.register(
+    getattr(settings_local, 'APPLICATION_ID'),
+    getattr(settings_local, 'REST_API_KEY'),
+    master_key=getattr(settings_local, 'MASTER_KEY')
+    )
 
 GLOBAL_JSON_TEXT = """{
     "applications": {
