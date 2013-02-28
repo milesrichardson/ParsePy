@@ -44,7 +44,7 @@ class ParseType(object):
 
         if is_object and not as_pointer:
             return dict([(k, ParseType.convert_to_parse(v, as_pointer=True))
-                         for k, v in python_object._editable_attrs
+                         for k, v in python_object._editable_attrs.items()
                          ])
 
         python_type = Object if is_object else type(python_object)
@@ -188,7 +188,7 @@ class ParseResource(ParseBase, Pointer):
     def _editable_attrs(self):
         protected_attrs = self.__class__.PROTECTED_ATTRIBUTES
         allowed = lambda a: a not in protected_attrs and not a.startswith('_')
-        return [(k, v) for k, v in self.__dict__.items() if allowed(k)]
+        return dict([(k, v) for k, v in self.__dict__.items() if allowed(k)])
 
     def __init__(self, **kw):
         for key, value in kw.items():

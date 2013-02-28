@@ -90,7 +90,7 @@ class User(ParseResource):
 
     def _to_native(self):
         return dict([(k, ParseType.convert_to_parse(v, as_pointer=True))
-                     for k, v in self._editable_attrs])
+                     for k, v in self._editable_attrs.items()])
 
     def __repr__(self):
         return '<User:%s (Id %s)>' % (self.username, self.objectId)
