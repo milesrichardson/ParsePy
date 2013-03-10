@@ -11,11 +11,9 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import base64
-import datetime
-import copy
 
-from __init__ import API_ROOT
+from core import ResourceRequestLoginRequired
+from connection import API_ROOT
 from datatypes import ParseResource, ParseType
 from query import QueryManager
 
@@ -85,7 +83,7 @@ class User(ParseResource):
         try:
             User.POST(url, email=email)
             return True
-        except Exception, why:
+        except:
             return False
 
     def _to_native(self):

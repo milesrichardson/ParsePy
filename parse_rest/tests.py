@@ -9,10 +9,11 @@ import os
 import sys
 import subprocess
 import unittest
-import urllib2
 import datetime
 
-import __init__ as parse_rest
+
+from core import ResourceRequestNotFound
+from connection import register
 from datatypes import GeoPoint, Object
 from function import Function
 from user import User
@@ -24,7 +25,7 @@ except ImportError:
     sys.exit('You must create a settings_local.py file with APPLICATION_ID, ' \
                  'REST_API_KEY, MASTER_KEY variables set')
 
-parse_rest.ParseBase.register(
+register(
     getattr(settings_local, 'APPLICATION_ID'),
     getattr(settings_local, 'REST_API_KEY'),
     master_key=getattr(settings_local, 'MASTER_KEY')
@@ -169,7 +170,6 @@ class TestTypes(unittest.TestCase):
                      'Can not serialize geopoint data')
 
     def testCanConvertDate(self):
-        native_score = self.score._to_native()
         native_date = self.score._to_native().get('date_of_birth')
         self.assert_(type(native_date) is dict,
                      'Could not serialize date into dict')
@@ -271,7 +271,6 @@ class TestQuery(unittest.TestCase):
     def testCanCompareDateInequality(self):
         today = datetime.datetime.today()
         tomorrow = today + datetime.timedelta(days=1)
-        yesterday = today - datetime.timedelta(days=1)
         self.assert_(GameScore.Query.lte(createdAt=tomorrow).count() == 5,
                      'Could not make inequality comparison with dates')
 
@@ -352,7 +351,7 @@ class TestUser(unittest.TestCase):
 
         try:
             u = User.login(self.USERNAME, self.PASSWORD)
-        except parse_rest.ResourceRequestNotFound as e:
+        except ResourceRequestNotFound:
             # if the user doesn't exist, that's fine
             return
         u.delete()

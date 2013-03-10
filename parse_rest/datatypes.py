@@ -13,10 +13,10 @@
 
 import base64
 import datetime
-import urllib2
 
-from __init__ import ParseBase, API_ROOT
+from connection import API_ROOT, ParseBase
 from query import QueryManager
+
 
 class ParseType(object):
 
@@ -176,6 +176,7 @@ class File(ParseType):
     _absolute_url = property(lambda self: self._api_url)
 
 
+
 class ParseResource(ParseBase, Pointer):
 
     PROTECTED_ATTRIBUTES = ['objectId', 'createdAt', 'updatedAt']
@@ -302,4 +303,3 @@ class Object(ParseResource):
             }
         self.__class__.PUT(self._absolute_url, **payload)
         self.__dict__[key] += amount
-
