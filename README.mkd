@@ -2,37 +2,35 @@ parse_rest
 ==========
 
 **parse_rest** is a Python client for the [Parse REST
-  API](https://www.parse.com/docs/rest). It provides Python object
-  mapping for Parse objects with methods to save, update, and delete
-  objects, as well as an interface for querying stored objects.
+  API](https://www.parse.com/docs/rest). It provides:
+
+  - Python object mapping for Parse objects with methods to save,
+  update, and delete objects, as well as an interface for querying
+  stored objects.
+  - Complex data types provided by Parse with no python equivalent
+  - User authentication, account creation** (signup) and querying.
+  - Cloud code integration
+  - **PLANNED/TODO**: Installation querying**
+  - **PLANNED/TODO**: push/channel querying**
+  - **PLANNED/TODO**: Roles/ACLs**
+  - **PLANNED/TODO**: Image/File type support
+
+
+** for applications with access to the MASTER KEY, see details below.
+
 
 Installation
 ------------
 
-The easiest way to install this package is from
-[PyPI](http://pypi.python.org/pypi), either using
-[easy_install](http://packages.python.org/distribute/easy_install.html):
-
-    easy_install parse_rest
-
-or [pip](http://pypi.python.org/pypi/pip):
-
-    pip install parse_rest
-
-(if you are using a Mac or Linux system you may need to prepend `sudo`
-to either command).
-
-Alternatively, you can install it from source by downloading or
+The easiest way to install this package is by downloading or
 cloning this repository:
 
-    git clone git@github.com:dgrtwo/ParsePy.git
+    pip install git+git clone git@github.com:dgrtwo/ParsePy.git
 
-and performing the commands:
-
-    python setup.py build
-    python setup.py install
-
-(again you may have to add `sudo` before `python setup.py install`).
+Note: The version on [PyPI](http://pypi.python.org/pypi) is not
+up-to-date. The code is still under lots of changes and the stability
+of the library API - though improving - is not guaranteed. Please
+file any issues that you may find if documentation/application.
 
 Testing
 -------
@@ -48,37 +46,82 @@ REST_API_KEY = "REST_API_KEY_HERE"
 MASTER_KEY = "MASTER_KEY_HERE"
 ~~~~~
 
-* install the [Parse CloudCode command line
-  tool](https://www.parse.com/docs/cloud_code_guide)
+* install the [Parse CloudCode tool](https://www.parse.com/docs/cloud_code_guide)
 
 You can then test the installation by running:
 
     python setup.py test
 
 
-Basic Usage
+Usage
 -----------
 
-Let's get everything set up first. You'll need to give `parse_rest`
-your Application Id and REST API Key (available from your Parse
-dashboard) in order to get access to your data. All calls to Parse are
-done through ParseBase classes, so we need to register the credentials
-with it.
+Before the first interaction with the Parse server, you need to
+register your access credentials. You can do so by calling
+`parse_rest.connection.register`.
+
+Before getting to code, a word of caution. You need to consider how your application is
+meant to be deployed. Parse identifies your application though
+different keys (available from your Parse dashboard) that are used in
+every request done to their servers.
+
+If your application is supposed to be distributed to third parties
+(such as a desktop program to be installed), you SHOULD NOT put the
+master key in your code. If your application is meant to be running in
+systems that you fully control (e.g, a web app that needs to integrate
+with Parse to provide functionality to your client), you may also add
+your *master key*.
 
 ~~~~~ {python}
-import parse_rest
-parse_rest.ParseBase.register(<application_id>, <rest_api_key>)
+from parse_rest.connection import register
+register(<application_id>, <rest_api_key>[, master_key=None])
 ~~~~~
 
-To create a new object of the Parse class `GameScore`, you first
-create such a class inheriting `parse_rest.Object`:
+Once your application calls register, you will be able to read, write
+and query for data at Parse.
+
+
+Data types
+----------
+
+Parse allows us to get data in different base types that have a direct
+python equivalent (strings, integers, floats, dicts, lists) as well as
+some more complex ones (e.g.:`File`, `Image`, `Date`). It also allows
+us to define objects with schema-free structure, and save them, as
+well to query them later by their attributes. `parse_rest` is
+handy as a way to serialize/deserialize these objects transparently.
+
+The Object type
+---------------
+
+
+In theory, you are able to simply instantiate a `Object` and do
+everything that you want with it, save it on Parse, retrieve it later,
+etc.
 
 ~~~~~ {python}
-class GameScore(parse_rest.Object):
+from parse_rest.datatypes import Object
+
+first_object = Object()
+~~~~~
+
+In practice, you will probably want different classes for your
+application to allow for a better organization in your own code.
+
+So, let's say you want to make an online game, and you want to save the scoreboard on Parse.
+
+For that, you decide to define a class called `GameScore`. All you
+need to do to create such a class is to define a Python class that
+inherts from `parse_rest.datatypes.Object`:
+
+~~~~~ {python}
+from parse_rest.datatypes import Object
+
+class GameScore(Object):
     pass
 ~~~~~
 
-And then initialize it with your parameters:
+And then instantiate it with your parameters:
 
 ~~~~~ {python}
 gameScore = GameScore(score=1337, player_name='John Doe', cheat_mode=False)
@@ -90,10 +133,6 @@ You can change or set new parameters afterwards:
 gameScore.cheat_mode = True
 gameScore.level = 20
 ~~~~
-
-Supported data types are any type that can be serialized by JSON and
-Python's _datetime.datetime_ object. (Binary data and references to
-other _Object_'s are also supported, as we'll see in a minute.)
 
 To save our new object, just call the save() method:
 
@@ -141,20 +180,19 @@ gameScore.updatedAt
 Additional Datatypes
 --------------------
 
-If we want to store binary streams in a Object, we can use the parse_rest.Binary type:
-
-~~~~~ {python}
-gameScore.victoryImage = parse_rest.Binary('\x03\xf3\r\n\xc7\x81\x7fNc ... ')
-~~~~~
-
-We can also store geoPoint dataTypes, with latitude and longitude
-as float values.
+We've mentioned that Parse supports more complex types, most of these
+types are also supported on Python (dates, files). So these types can
+be converted transparently when you use them. For the types that Parse
+provided and Python does not support natively, `parse_rest` provides
+the appropiates classes to work with them. One such example is
+`GeoPoint`, where you store latitude and longitude
 
 ~~~~~ {python}
 class Restaurant(parse_rest.Object):
     pass
 
 restaurant = Restaurant(name="Los Pollos Hermanos")
+# coordinates as floats.
 restaurant.location = parse_rest.GeoPoint(latitude=12.0, longitude=-34.45)
 restaurant.save()
 ~~~~~
@@ -235,13 +273,13 @@ The available filter functions are:
 **Warning**: We may change the way to use filtering functions in the
   near future, and favor a parameter-suffix based approach (similar to
   Django)
-             
 
-#### Sorting/Ordering 
+
+#### Sorting/Ordering
 
 Querysets can also be ordered. Just define the name of the attribute
 that you want to use to sort. Appending a "-" in front of the name
-will sort the set in descending order. 
+will sort the set in descending order.
 
 ~~~~~ {python}
 low_to_high_score_board = GameScore.Query.all().order_by("score")
@@ -260,7 +298,7 @@ page_one = posts.limit(10) # Will return the most 10 recent posts.
 page_two = posts.skip(10).limit(10) # Will return posts 11-20
 ~~~~~
 
-#### Composability/Chaining of Querysets 
+#### Composability/Chaining of Querysets
 
 The example above can show the most powerful aspect of Querysets, that
 is the ability to make complex querying and filtering by chaining calls:
