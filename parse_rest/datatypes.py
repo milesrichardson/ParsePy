@@ -176,6 +176,15 @@ class File(ParseType):
     _absolute_url = property(lambda self: self._api_url)
 
 
+class Function(ParseBase):
+    ENDPOINT_ROOT = '/'.join((API_ROOT, 'functions'))
+
+    def __init__(self, name):
+        self.name = name
+
+    def __call__(self, **kwargs):
+        return self.POST('/' + self.name, **kwargs)
+
 
 class ParseResource(ParseBase, Pointer):
 

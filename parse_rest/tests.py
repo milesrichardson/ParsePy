@@ -14,8 +14,7 @@ import datetime
 
 from core import ResourceRequestNotFound
 from connection import register
-from datatypes import GeoPoint, Object
-from function import Function
+from datatypes import GeoPoint, Object, Function
 from user import User
 import query
 
