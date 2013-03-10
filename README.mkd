@@ -77,7 +77,7 @@ from parse_rest.connection import register
 register(<application_id>, <rest_api_key>[, master_key=None])
 ~~~~~
 
-Once your application calls register, you will be able to read, write
+Once your application calls `register`, you will be able to read, write
 and query for data at Parse.
 
 
@@ -107,12 +107,10 @@ first_object = Object()
 
 In practice, you will probably want different classes for your
 application to allow for a better organization in your own code.
-
-So, let's say you want to make an online game, and you want to save the scoreboard on Parse.
-
-For that, you decide to define a class called `GameScore`. All you
-need to do to create such a class is to define a Python class that
-inherts from `parse_rest.datatypes.Object`:
+So, let's say you want to make an online game, and you want to save
+the scoreboard on Parse. For that, you decide to define a class called
+`GameScore`. All you need to do to create such a class is to define a
+Python class that inherts from `parse_rest.datatypes.Object`:
 
 ~~~~~ {python}
 from parse_rest.datatypes import Object
