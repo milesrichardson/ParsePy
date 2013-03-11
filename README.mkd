@@ -186,14 +186,14 @@ the appropiates classes to work with them. One such example is
 `GeoPoint`, where you store latitude and longitude
 
 ~~~~~ {python}
-from parse_rest.datatypes import Object
+from parse_rest.datatypes import Object, GeoPoint
 
 class Restaurant(Object):
     pass
 
 restaurant = Restaurant(name="Los Pollos Hermanos")
 # coordinates as floats.
-restaurant.location = parse_rest.GeoPoint(latitude=12.0, longitude=-34.45)
+restaurant.location = GeoPoint(latitude=12.0, longitude=-34.45)
 restaurant.save()
 ~~~~~
 
