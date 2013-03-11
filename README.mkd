@@ -186,7 +186,9 @@ the appropiates classes to work with them. One such example is
 `GeoPoint`, where you store latitude and longitude
 
 ~~~~~ {python}
-class Restaurant(parse_rest.Object):
+from parse_rest.datatypes import Object
+
+class Restaurant(Object):
     pass
 
 restaurant = Restaurant(name="Los Pollos Hermanos")
@@ -198,7 +200,9 @@ restaurant.save()
 We can store a reference to another Object by assigning it to an attribute:
 
 ~~~~~ {python}
-class CollectedItem(parse_rest.Object):
+from parse_rest.datatypes import Object
+
+class CollectedItem(Object):
     pass
 
 collectedItem = CollectedItem(type="Sword", isAwesome=True)
@@ -326,16 +330,18 @@ for post in posts_by_joe:
 Users
 -----
 
-You can sign up, log in, modify or delete users as well, using the `User` object. You sign a user up as follows:
+You can sign up, log in, modify or delete users as well, using the `parse_rest.user.User` class. You sign a user up as follows:
 
 ~~~~~ {python}
-u = parse_rest.User.signup("dhelmet", "12345", phone="555-555-5555")
+from parse_rest.user import User
+
+u = User.signup("dhelmet", "12345", phone="555-555-5555")
 ~~~~~
 
 or log in an existing user with
 
 ~~~~~ {python}
-u = parse_rest.User.login("dhelmet", "12345")
+u = User.login("dhelmet", "12345")
 ~~~~~
 
 Once a `User` has been logged in, it saves its session so that it can be edited or deleted:
@@ -378,13 +384,15 @@ Parse.Cloud.define("averageStars", function(request, response) {
 });
 ~~~~~
 
-Then you can call either of these functions using the `parse_rest.Function` class:
+Then you can call either of these functions using the `parse_rest.datatypes.Function` class:
 
 ~~~~~ {python}
-hello_func = parse_rest.Function("hello")
+from parse_rest.datatypes import Function
+
+hello_func = Function("hello")
 hello_func()
 {u'result': u'Hello world!'}
-star_func = parse_rest.Function("averageStars")
+star_func = Function("averageStars")
 star_func(movie="The Matrix")
 {u'result': 4.5}
 ~~~~~
