@@ -11,19 +11,10 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import __init__ as parse_rest
-from __init__ import API_ROOT, ParseResource
+from connection import API_ROOT
+from datatypes import ParseResource
 from query import QueryManager
 
-
-class InstallationManager(QueryManager):
-    def __init__(self):
-        self._model_class = Installation
-
-    def _fetch(self, **kw):
-        kw['extra_headers'] = {'X-Parse-Master-Key': parse_rest.MASTER_KEY}
-        response = Installation.GET(Installation.ENDPOINT_ROOT, **kw)
-        return [Installation(**it) for it in response.get('results')]
 
 class Installation(ParseResource):
     ENDPOINT_ROOT = '/'.join([API_ROOT, 'installations'])
@@ -42,4 +33,5 @@ class Push(ParseResource):
             targets['where'] = kw
         return cls.POST('', data=alert_message, **targets)
 
-Installation.Query = InstallationManager()
+
+Installation.Query = QueryManager(Installation)

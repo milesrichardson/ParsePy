@@ -3,7 +3,7 @@ from unittest import TextTestRunner, TestLoader
 
 
 class TestCommand(Command):
-    """Run test suite using 'python setup.py test'"""
+    '''Run test suite using `python setup.py test `'''
     user_options = []
 
     def initialize_options(self):
@@ -13,22 +13,21 @@ class TestCommand(Command):
         pass
 
     def run(self):
-        """Run test suite in parse_rest.tests"""
-        from parse_rest import tests
-        tests = TestLoader().loadTestsFromNames(["parse_rest.tests"])
+        '''Run test suite in parse_rest.tests'''
+        tests = TestLoader().loadTestsFromNames(['parse_rest.tests'])
         t = TextTestRunner(verbosity=1)
         t.run(tests)
 
 
 setup(
     name='parse_rest',
-    version='0.10.2013',
+    version='0.2.20130312',
     description='A client library for Parse.com\'.s REST API',
     url='https://github.com/dgrtwo/ParsePy',
     packages=['parse_rest'],
-    maintainer="David Robinson",
-    maintainer_email="dgrtwo@princeton.edu",
-    cmdclass={"test": TestCommand},
+    maintainer='David Robinson',
+    maintainer_email='dgrtwo@princeton.edu',
+    cmdclass={'test': TestCommand},
     classifiers=[
         'Development Status :: 4 - Beta',
         'Environment :: Web Environment',
