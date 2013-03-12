@@ -53,10 +53,9 @@ class User(ParseResource):
     @login_required
     def save(self):
         session_header = {'X-Parse-Session-Token': self.sessionToken}
-        return self.__class__.PUT(
-            self._absolute_url,
-            extra_headers=session_header,
-            **self._to_native())
+        url = self._absolute_url
+        data = self._to_native()
+        return self.__class__.PUT(url, extra_headers=session_header, **data)
 
     @login_required
     def delete(self):
@@ -65,18 +64,16 @@ class User(ParseResource):
 
     @staticmethod
     def signup(username, password, **kw):
-        return User(**User.POST('', username=username, password=password,
-                                **kw))
+        return User(**User.POST('', username=username, password=password, **kw))
 
     @staticmethod
-    def login(username, password):
+    def login(username, passwd):
         login_url = '/'.join([API_ROOT, 'login'])
-        return User(**User.GET(login_url, username=username,
-                                password=password))
+        return User(**User.GET(login_url, username=username, password=passwd))
 
     @staticmethod
     def request_password_reset(email):
-        '''Trigger Parse's Password Process. Return True/False
+        '''Trigger Parse\'s Password Process. Return True/False
         indicate success/failure on the request'''
 
         url = '/'.join([API_ROOT, 'requestPasswordReset'])
