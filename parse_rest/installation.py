@@ -24,7 +24,7 @@ class Push(ParseResource):
     ENDPOINT_ROOT = '/'.join([API_ROOT, 'push'])
 
     @classmethod
-    def send(cls, message, channels=None, type=None, push_time=None, expiration_interval=None, **kw):
+    def send(cls, message, channels=None, device_type=None, push_time=None, expiration_interval=None, **kw):
         if type(message) == dict:
             data = message
         else:
@@ -34,8 +34,8 @@ class Push(ParseResource):
             targets["push_time"] = push_time
         if expiration_interval:
             targets["expiration_interval"] = expiration_interval
-        if type:
-            targets["type"] = type
+        if device_type:
+            targets["type"] = device_type
         if channels:
             targets['channels'] = channels
         if kw:
