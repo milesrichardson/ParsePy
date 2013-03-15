@@ -10,8 +10,8 @@ parse_rest
   - Complex data types provided by Parse with no python equivalent
   - User authentication, account creation** (signup) and querying.
   - Cloud code integration
-  - **PLANNED/TODO**: Installation querying**
-  - **PLANNED/TODO**: push/channel querying**
+  - Installation querying
+  - push
   - **PLANNED/TODO**: Roles/ACLs**
   - **PLANNED/TODO**: Image/File type support
 
