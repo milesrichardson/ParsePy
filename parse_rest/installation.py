@@ -24,23 +24,16 @@ class Push(ParseResource):
     ENDPOINT_ROOT = '/'.join([API_ROOT, 'push'])
 
     @classmethod
-    def send(cls, message, channels=None, device_type=None, push_time=None, expiration_interval=None, **kw):
-        if type(message) == dict:
-            data = message
-        else:
-            data = {'alert': message}
-        targets = {}
-        if push_time:
-            targets["push_time"] = push_time
-        if expiration_interval:
-            targets["expiration_interval"] = expiration_interval
-        if device_type:
-            targets["type"] = device_type
-        if channels:
-            targets['channels'] = channels
-        if kw:
-            targets['where'] = kw
-        return cls.POST('', data=data, **targets)
+    def _send(cls, data, where=None, **kw):
+        if where: kw['where'] = where
+        return cls.POST('', data=data, **kw)
 
+    @classmethod
+    def alert(cls, data, where=None, **kw):
+        cls._send(data, where=where, **kw)
+
+    @classmethod
+    def message(cls, message, where=None, **kw):
+        cls._send({'alert': message}, where=where, **kw)
 
 Installation.Query = QueryManager(Installation)
