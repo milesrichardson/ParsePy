@@ -362,6 +362,7 @@ class TestUser(unittest.TestCase):
         self._destroy_user()
         user = User.signup(self.username, self.password)
         self.assert_(user is not None)
+        self.assert_(user.username == self.username)
 
     def testCanLogin(self):
         self._get_user()  # User should be created here.
