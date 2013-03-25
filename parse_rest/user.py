@@ -24,7 +24,7 @@ def login_required(func):
         if not hasattr(obj, 'sessionToken'):
             message = '%s requires a logged-in session' % func.__name__
             raise ResourceRequestLoginRequired(message)
-        func(obj, *args, **kw)
+        return func(obj, *args, **kw)
     return ret
 
 
@@ -51,6 +51,10 @@ class User(ParseResource):
             self.sessionToken = session_token
 
     @login_required
+    def session_header(self):
+        return {'X-Parse-Session-Token': self.sessionToken}
+
+    @login_required
     def save(self):
         session_header = {'X-Parse-Session-Token': self.sessionToken}
         url = self._absolute_url
@@ -72,6 +76,11 @@ class User(ParseResource):
     def login(username, passwd):
         login_url = '/'.join([API_ROOT, 'login'])
         return User(**User.GET(login_url, username=username, password=passwd))
+
+    @staticmethod
+    def login_auth(auth):
+        login_url = User.ENDPOINT_ROOT
+        return User(**User.POST(login_url, authData=auth))
 
     @staticmethod
     def request_password_reset(email):

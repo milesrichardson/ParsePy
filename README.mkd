@@ -211,6 +211,29 @@ collectedItem.save() # we have to save it before it can be referenced
 gameScore.item = collectedItem
 ~~~~~
 
+Batch Operations
+----------------
+
+For the sake of efficiency, Parse also supports creating, updating or deleting objects in batches using a single query, which saves on network round trips. You can perform such batch operations using the `connection.ParseBatcher` object:
+
+~~~~~ {python}
+from parse_rest.connection import ParseBatcher
+
+score1 = GameScore(score=1337, player_name='John Doe', cheat_mode=False)
+score2 = GameScore(score=1400, player_name='Jane Doe', cheat_mode=False)
+score3 = GameScore(score=2000, player_name='Jack Doe', cheat_mode=True)
+scores = [score1, score2, score3]
+
+batcher = ParseBatcher()
+batcher.batch_save(scores)
+batcher.batch_delete(scores)
+~~~~~
+
+You can also mix `save` and `delete` operations in the same query as follows (note the absence of parentheses after each `save` or `delete`):
+
+~~~~~ {python}
+batcher.batch([score1.save, score2.save, score3.delete])
+~~~~~
 
 Querying
 --------
@@ -343,6 +366,14 @@ or log in an existing user with
 ~~~~~ {python}
 u = User.login("dhelmet", "12345")
 ~~~~~
+
+If you'd like to log in a user with Facebook or Twitter, and have already obtained an access token (including a user ID and expiration date) to do so, you can log in like this:
+
+~~~~ {python}
+authData = {"facebook": {"id": fbID, "access_token": access_token,
+                         "expiration_date": expiration_date}}
+u = User.login_auth(authData)
+~~~~
 
 Once a `User` has been logged in, it saves its session so that it can be edited or deleted:
 

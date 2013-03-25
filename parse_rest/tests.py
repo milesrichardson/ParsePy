@@ -13,7 +13,7 @@ import datetime
 
 
 from core import ResourceRequestNotFound
-from connection import register
+from connection import register, ParseBatcher
 from datatypes import GeoPoint, Object, Function
 from user import User
 import query
@@ -80,7 +80,7 @@ class TestObject(unittest.TestCase):
                 city.delete()
 
         if game_score:
-            for score in GameScore.Query.where(score=game_score):
+            for score in GameScore.Query.all():
                 score.delete()
 
     def testCanInitialize(self):
@@ -142,6 +142,31 @@ class TestObject(unittest.TestCase):
                      "Associated CollectedItem is not an object")
         self.assert_(qs.item.type == "Sword",
                    "Associated CollectedItem does not have correct attributes")
+
+    def testBatch(self):
+        """test saving, updating and deleting objects in batches"""
+        scores = [GameScore(score=s, player_name='Jane', cheat_mode=False)
+                    for s in range(5)]
+        batcher = ParseBatcher()
+        batcher.batch_save(scores)
+        self.assert_(GameScore.Query.where(player_name='Jane').count() == 5,
+                     "batch_save didn't create objects")
+        self.assert_(all(s.objectId is not None for s in scores),
+                     "batch_save didn't record object IDs")
+
+        # test updating
+        for s in scores:
+            s.score += 10
+        batcher.batch_save(scores)
+
+        updated_scores = GameScore.Query.where(player_name='Jane')
+        self.assertEqual(sorted([s.score for s in updated_scores]),
+                         range(10, 15), msg="batch_save didn't update objects")
+
+        # test deletion
+        batcher.batch_delete(scores)
+        self.assert_(GameScore.Query.where(player_name='Jane').count() == 0,
+                     "batch_delete didn't delete objects")
 
 
 class TestTypes(unittest.TestCase):
@@ -379,6 +404,7 @@ class TestUser(unittest.TestCase):
 
         self.assert_(User.Query.where(phone=phone_number).exists(),
                      'Failed to update user data. New info not on Parse')
+
 
 if __name__ == "__main__":
     # command line
