@@ -25,7 +25,7 @@ Installation
 The easiest way to install this package is by downloading or
 cloning this repository:
 
-    pip install git+git clone git@github.com:dgrtwo/ParsePy.git
+    pip install git+https://github.com/dgrtwo/ParsePy.git
 
 Note: The version on [PyPI](http://pypi.python.org/pypi) is not
 up-to-date. The code is still under lots of changes and the stability
