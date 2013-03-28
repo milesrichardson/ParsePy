@@ -34,6 +34,11 @@ class QueryManager(object):
         uri = self.model_class.ENDPOINT_ROOT
         return [klass(**it) for it in klass.GET(uri, **kw).get('results')]
 
+    def _count(self, **kw):
+        kw.update({"count": 1, "limit": 0})
+        return self.model_class.GET(self.model_class.ENDPOINT_ROOT,
+                                        **kw).get('count')
+
     def all(self):
         return Queryset(self)
 
@@ -102,12 +107,18 @@ class Queryset(object):
     def __iter__(self):
         return iter(self._fetch())
 
-    def _fetch(self):
+    def _fetch(self, count=False):
+        """
+        Return a list of objects matching query, or if count == True return
+        only the number of objects matching.
+        """
         options = dict(self._options)  # make a local copy
         if self._where:
             # JSON encode WHERE values
             where = json.dumps(self._where)
             options.update({'where': where})
+        if count:
+            return self._manager._count(**options)
 
         return self._manager._fetch(**options)
 
@@ -125,8 +136,7 @@ class Queryset(object):
         return self
 
     def count(self):
-        results = self._fetch()
-        return len(results)
+        return self._fetch(count=True)
 
     def exists(self):
         results = self._fetch()
