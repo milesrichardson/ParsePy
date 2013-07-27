@@ -250,31 +250,14 @@ operate on the data, or when you iterate on the Queryset.
 
 #### Filtering
 
-Querysets can be filtered:
+Like Django, Querysets can have constraints added by appending the name of the filter operator to name of the attribute:
 
 ~~~~~ {python}
-high_scores = GameScore.Query.all().gte(score=1000)
+high_scores = GameScore.Query.filter(score__gte=1000)
 ~~~~~
 
-The available filter functions are:
-
-* **Less Than**
-    * lt(**_parameters_)
-* **Less Than Or Equal To**
-    * lte(**_parameters_)
-* **Greater Than**
-    * gt(**_parameters_)
-* **Greater Than Or Equal To**
-    * gte(**_parameters_)
-* **Not Equal To**
-    * ne(**_parameters_)
-* **Equal to**
-    * eq(**_parameters_) // alias: where
-
-
-**Warning**: We may change the way to use filtering functions in the
-  near future, and favor a parameter-suffix based approach (similar to
-  Django)
+You can see the [full list of constraint operators defined by
+Parse](https://www.parse.com/docs/rest#queries-constraints)
 
 
 #### Sorting/Ordering

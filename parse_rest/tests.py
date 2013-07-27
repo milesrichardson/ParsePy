@@ -76,11 +76,11 @@ class TestObject(unittest.TestCase):
         city_name = getattr(self.sao_paulo, 'name', None)
         game_score = getattr(self.score, 'score', None)
         if city_name:
-            for city in City.Query.where(name=city_name):
+            for city in City.Query.filter(name=city_name):
                 city.delete()
 
         if game_score:
-            for score in GameScore.Query.where(score=game_score):
+            for score in GameScore.Query.filter(score=game_score):
                 score.delete()
 
     def testCanInitialize(self):
@@ -102,7 +102,7 @@ class TestObject(unittest.TestCase):
         self.assert_(object_id is not None, 'Can not create object')
         self.assert_(type(object_id) == unicode)
         self.assert_(type(self.score.createdAt) == datetime.datetime)
-        self.assert_(GameScore.Query.where(objectId=object_id).exists(),
+        self.assert_(GameScore.Query.filter(objectId=object_id).exists(),
                      'Can not create object')
 
     def testCanUpdateExistingObject(self):
@@ -118,14 +118,14 @@ class TestObject(unittest.TestCase):
         self.score.save()
         object_id = self.score.objectId
         self.score.delete()
-        self.assert_(not GameScore.Query.where(objectId=object_id).exists(),
+        self.assert_(not GameScore.Query.filter(objectId=object_id).exists(),
                      'Failed to delete object %s on Parse ' % self.score)
 
     def testCanIncrementField(self):
         previous_score = self.score.score
         self.score.save()
         self.score.increment('score')
-        self.assert_(GameScore.Query.where(score=previous_score + 1).exists(),
+        self.assert_(GameScore.Query.filter(score=previous_score + 1).exists(),
                      'Failed to increment score on backend')
 
     def testAssociatedObject(self):
@@ -194,61 +194,62 @@ class TestQuery(unittest.TestCase):
     def testExists(self):
         """test the Queryset.exists() method"""
         for s in range(1, 6):
-            self.assert_(GameScore.Query.where(score=s).exists(),
+            self.assert_(GameScore.Query.filter(score=s).exists(),
                          "exists giving false negative")
-        self.assert_(not GameScore.Query.where(score=10).exists(),
+        self.assert_(not GameScore.Query.filter(score=10).exists(),
                      "exists giving false positive")
 
-    def testWhereGet(self):
-        """test the Queryset.where() and Queryset.get() methods"""
+    def testCanFilter(self):
+        '''test the Queryset.filter() method'''
         for s in self.scores:
-            qobj = GameScore.Query.where(objectId=s.objectId).get()
+            qobj = GameScore.Query.filter(objectId=s.objectId).get()
             self.assert_(qobj.objectId == s.objectId,
-                         "Getting object with .where() failed")
+                         "Getting object with .filter() failed")
             self.assert_(qobj.score == s.score,
-                         "Getting object with .where() failed")
+                         "Getting object with .filter() failed")
 
-        # test the two exceptions get can raise
+    def testGetExceptions(self):
+        '''test possible exceptions raised by Queryset.get() method'''
         self.assertRaises(query.QueryResourceDoesNotExist,
-                          GameScore.Query.gt(score=20).get)
+                          GameScore.Query.filter(score__gt=20).get)
         self.assertRaises(query.QueryResourceMultipleResultsReturned,
-                          GameScore.Query.gt(score=3).get)
+                          GameScore.Query.filter(score__gt=3).get)
 
 
     def testCanQueryDates(self):
         last_week = datetime.datetime.now() - datetime.timedelta(days=7)
         score = GameScore(name='test', last_played=last_week)
         score.save()
-        self.assert_(GameScore.Query.where(last_played=last_week).exists(),
+        self.assert_(GameScore.Query.filter(last_played=last_week).exists(),
                      'Could not run query with dates')
 
     def testComparisons(self):
         """test comparison operators- gt, gte, lt, lte, ne"""
-        scores_gt_3 = list(GameScore.Query.all().gt(score=3))
+        scores_gt_3 = list(GameScore.Query.filter(score__gt=3))
         self.assertEqual(len(scores_gt_3), 2)
         self.assert_(all([s.score > 3 for s in scores_gt_3]))
 
-        scores_gte_3 = list(GameScore.Query.all().gte(score=3))
+        scores_gte_3 = list(GameScore.Query.filter(score__gte=3))
         self.assertEqual(len(scores_gte_3), 3)
         self.assert_(all([s.score >= 3 for s in scores_gt_3]))
 
-        scores_lt_4 = list(GameScore.Query.all().lt(score=4))
+        scores_lt_4 = list(GameScore.Query.filter(score__lt=4))
         self.assertEqual(len(scores_lt_4), 3)
         self.assert_(all([s.score < 4 for s in scores_lt_4]))
 
-        scores_lte_4 = list(GameScore.Query.all().lte(score=4))
+        scores_lte_4 = list(GameScore.Query.filter(score__lte=4))
         self.assertEqual(len(scores_lte_4), 4)
         self.assert_(all([s.score <= 4 for s in scores_lte_4]))
 
-        scores_ne_2 = list(GameScore.Query.all().ne(score=2))
+        scores_ne_2 = list(GameScore.Query.filter(score__ne=2))
         self.assertEqual(len(scores_ne_2), 4)
         self.assert_(all([s.score != 2 for s in scores_ne_2]))
 
         # test chaining
-        lt_4_gt_2 = list(GameScore.Query.all().lt(score=4).gt(score=2))
-        self.assert_(len(lt_4_gt_2) == 1, "chained lt+gt not working")
-        self.assert_(lt_4_gt_2[0].score == 3, "chained lt+gt not working")
-        q = GameScore.Query.all().gt(score=3).lt(score=3)
+        lt_4_gt_2 = list(GameScore.Query.filter(score__lt=4).filter(score__gt=2))
+        self.assert_(len(lt_4_gt_2) == 1, 'chained lt+gt not working')
+        self.assert_(lt_4_gt_2[0].score == 3, 'chained lt+gt not working')
+        q = GameScore.Query.filter(score__gt=3, score__lt=3)
         self.assert_(not q.exists(), "chained lt+gt not working")
 
     def testOptions(self):
@@ -270,22 +271,21 @@ class TestQuery(unittest.TestCase):
     def testCanCompareDateInequality(self):
         today = datetime.datetime.today()
         tomorrow = today + datetime.timedelta(days=1)
-        self.assert_(GameScore.Query.lte(createdAt=tomorrow).count() == 5,
+        self.assert_(GameScore.Query.filter(createdAt__lte=tomorrow).count() == 5,
                      'Could not make inequality comparison with dates')
 
     def tearDown(self):
-        """delete all GameScore objects"""
+        '''delete all GameScore objects'''
         for s in GameScore.Query.all():
             s.delete()
 
 
 class TestFunction(unittest.TestCase):
     def setUp(self):
-        """create and deploy cloud functions"""
+        '''create and deploy cloud functions'''
         original_dir = os.getcwd()
 
-        cloud_function_dir = os.path.join(os.path.split(__file__)[0],
-                                          "cloudcode")
+        cloud_function_dir = os.path.join(os.path.split(__file__)[0], 'cloudcode')
         os.chdir(cloud_function_dir)
         # write the config file
         with open("config/global.json", "w") as outf:
@@ -339,7 +339,7 @@ class TestUser(unittest.TestCase):
         user and user.delete()
 
     def _get_logged_user(self):
-        if User.Query.where(username=self.username).exists():
+        if User.Query.filter(username=self.username).exists():
             return User.login(self.username, self.password)
         else:
             return self._get_user()
@@ -377,7 +377,7 @@ class TestUser(unittest.TestCase):
         user.phone = phone_number
         user.save()
 
-        self.assert_(User.Query.where(phone=phone_number).exists(),
+        self.assert_(User.Query.filter(phone=phone_number).exists(),
                      'Failed to update user data. New info not on Parse')
 
 if __name__ == "__main__":

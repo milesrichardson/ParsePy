@@ -15,6 +15,7 @@ import json
 import collections
 import copy
 
+
 class QueryResourceDoesNotExist(Exception):
     '''Query returned no results'''
     pass
@@ -26,6 +27,7 @@ class QueryResourceMultipleResultsReturned(Exception):
 
 
 class QueryManager(object):
+
     def __init__(self, model_class):
         self.model_class = model_class
 
@@ -37,44 +39,20 @@ class QueryManager(object):
     def all(self):
         return Queryset(self)
 
-    def where(self, **kw):
-        return self.all().where(**kw)
-
-    def lt(self, **kw):
-        return self.all().lt(**kw)
-
-    def lte(self, **kw):
-        return self.all().lte(**kw)
-
-    def ne(self, **kw):
-        return self.all().ne(**kw)
-
-    def gt(self, **kw):
-        return self.all().gt(**kw)
-
-    def gte(self, **kw):
-        return self.all().gte(**kw)
+    def filter(self, **kw):
+        return self.all().filter(**kw)
 
     def fetch(self):
         return self.all().fetch()
 
     def get(self, **kw):
-        return self.where(**kw).get()
+        return self.filter(**kw).get()
 
 
 class QuerysetMetaclass(type):
     """metaclass to add the dynamically generated comparison functions"""
     def __new__(cls, name, bases, dct):
         cls = super(QuerysetMetaclass, cls).__new__(cls, name, bases, dct)
-
-        # add comparison functions and option functions
-        for fname in ['lt', 'lte', 'gt', 'gte', 'ne']:
-            def func(self, fname=fname, **kwargs):
-                s = copy.deepcopy(self)
-                for k, v in kwargs.items():
-                    s._where[k]['$' + fname] = cls.convert_to_parse(v)
-                return s
-            setattr(cls, fname, func)
 
         for fname in ['limit', 'skip']:
             def func(self, value, fname=fname):
@@ -89,10 +67,22 @@ class QuerysetMetaclass(type):
 class Queryset(object):
     __metaclass__ = QuerysetMetaclass
 
+    OPERATORS = [
+        'lt', 'lte', 'gt', 'gte', 'ne', 'in', 'nin', 'exists', 'select', 'dontSelect', 'all'
+        ]
+
     @staticmethod
     def convert_to_parse(value):
         from datatypes import ParseType
         return ParseType.convert_to_parse(value)
+
+    @classmethod
+    def extract_filter_operator(cls, parameter):
+        for op in cls.OPERATORS:
+            underscored = '__%s' % op
+            if parameter.endswith(underscored):
+                return parameter[:-len(underscored)], op
+        return parameter, None
 
     def __init__(self, manager):
         self._manager = manager
@@ -111,12 +101,14 @@ class Queryset(object):
 
         return self._manager._fetch(**options)
 
-    def where(self, **kw):
-        return self.eq(**kw)
-
-    def eq(self, **kw):
+    def filter(self, **kw):
         for name, value in kw.items():
-            self._where[name] = Queryset.convert_to_parse(value)
+            parse_value = Queryset.convert_to_parse(value)
+            attr, operator = Queryset.extract_filter_operator(name)
+            if operator is None:
+                self._where[attr] = parse_value
+            else:
+                self._where[attr]['$' + operator] = parse_value
         return self
 
     def order_by(self, order, descending=False):
