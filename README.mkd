@@ -315,7 +315,7 @@ Most importantly, Querysets can be chained together. This allows you
 to make more complex queries:
 
 ~~~~~ {python}
-posts_by_joe = Post.Query.all().where(author='Joe').order_by("view_count")
+posts_by_joe = Post.Query.all().filter(author='Joe').order_by("view_count")
 popular_posts = posts_by_joe.gte(view_count=200)
 ~~~~~
 
@@ -325,7 +325,7 @@ After all the querying/filtering/sorting, you will probably want to do
 something with the results. Querysets can be iterated on:
 
 ~~~~~ {python}
-posts_by_joe = Post.Query.all().where(author='Joe').order_by('view_count')
+posts_by_joe = Post.Query.all().filter(author='Joe').order_by('view_count')
 for post in posts_by_joe:
    print post.title, post.publication_date, post.text
 ~~~~~
