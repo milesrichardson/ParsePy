@@ -227,26 +227,46 @@ class ParseResource(ParseBase, Pointer):
     def _set_created_datetime(self, value):
         self._created_at = Date(value)
 
-    def save(self):
+    def save(self, batch=False):
         if self.objectId:
-            self._update()
+            return self._update(batch=batch)
         else:
-            self._create()
+            return self._create(batch=batch)
 
-    def _create(self):
+    def _create(self, batch=False):
         uri = self.__class__.ENDPOINT_ROOT
-        response_dict = self.__class__.POST(uri, **self._to_native())
+        response = self.__class__.POST(uri, batch=batch, **self._to_native())
 
-        self.createdAt = self.updatedAt = response_dict['createdAt']
-        self.objectId = response_dict['objectId']
+        def call_back(response_dict):
+            self.createdAt = self.updatedAt = response_dict['createdAt']
+            self.objectId = response_dict['objectId']
 
-    def _update(self):
-        response = self.__class__.PUT(self._absolute_url, **self._to_native())
-        self.updatedAt = response['updatedAt']
+        if batch:
+            return response, call_back
+        else:
+            call_back(response)
 
-    def delete(self):
-        self.__class__.DELETE(self._absolute_url)
-        self.__dict__ = {}
+    def _update(self, batch=False):
+        response = self.__class__.PUT(self._absolute_url, batch=batch,
+                                      **self._to_native())
+
+        def call_back(response_dict):
+            self.updatedAt = response_dict['updatedAt']
+
+        if batch:
+            return response, call_back
+        else:
+            call_back(response)
+
+    def delete(self, batch=False):
+        response = self.__class__.DELETE(self._absolute_url, batch=batch)
+        def call_back(response_dict):
+            self.__dict__ = {}
+
+        if batch:
+            return response, call_back
+        else:
+            call_back(response)
 
     _absolute_url = property(
         lambda self: '/'.join([self.__class__.ENDPOINT_ROOT, self.objectId])

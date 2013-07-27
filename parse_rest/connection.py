@@ -45,7 +45,20 @@ class ParseBase(object):
     ENDPOINT_ROOT = API_ROOT
 
     @classmethod
-    def execute(cls, uri, http_verb, extra_headers=None, **kw):
+    def execute(cls, uri, http_verb, extra_headers=None, batch=False, **kw):
+        """
+        if batch == False, execute a command with the given parameters and
+        return the response JSON.
+        If batch == True, return the dictionary that would be used in a batch
+        command.
+        """
+        if batch:
+            ret = {"method": http_verb,
+                   "path": uri.split("parse.com")[1]}
+            if kw:
+                ret["body"] = kw
+            return ret
+
         if not ('app_id' in ACCESS_KEYS and 'rest_key' in ACCESS_KEYS):
             raise core.ParseError('Missing connection credentials')
 
@@ -65,7 +78,8 @@ class ParseBase(object):
         request.add_header('X-Parse-Application-Id', app_id)
         request.add_header('X-Parse-REST-API-Key', rest_key)
 
-        if master_key: request.add_header('X-Parse-Master-Key', master_key)
+        if master_key and 'X-Parse-Session-Token' not in headers.keys():
+            request.add_header('X-Parse-Master-Key', master_key)
 
         request.get_method = lambda: http_verb
 
@@ -97,3 +111,29 @@ class ParseBase(object):
     @classmethod
     def DELETE(cls, uri, **kw):
         return cls.execute(uri, 'DELETE', **kw)
+
+
+class ParseBatcher(ParseBase):
+    """Batch together create, update or delete operations"""
+    ENDPOINT_ROOT = '/'.join((API_ROOT, 'batch'))
+
+    def batch(self, methods):
+        """
+        Given a list of create, update or delete methods to call, call all
+        of them in a single batch operation.
+        """
+        queries, callbacks = zip(*[m(batch=True) for m in methods])
+        # perform all the operations in one batch
+        responses = self.execute("", "POST", requests=queries)
+        # perform the callbacks with the response data (updating the existing
+        # objets, etc)
+        for callback, response in zip(callbacks, responses):
+            callback(response["success"])
+
+    def batch_save(self, objects):
+        """save a list of objects in one operation"""
+        self.batch([o.save for o in objects])
+
+    def batch_delete(self, objects):
+        """delete a list of objects in one operation"""
+        self.batch([o.delete for o in objects])
