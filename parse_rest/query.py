@@ -15,6 +15,10 @@ import json
 import collections
 import copy
 
+try:
+    unicode = unicode
+except NameError:
+    unicode = str
 
 class QueryResourceDoesNotExist(Exception):
     '''Query returned no results'''

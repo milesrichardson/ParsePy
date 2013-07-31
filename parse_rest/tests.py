@@ -24,6 +24,12 @@ except ImportError:
     sys.exit('You must create a settings_local.py file with APPLICATION_ID, ' \
                  'REST_API_KEY, MASTER_KEY variables set')
 
+try:
+    unicode = unicode
+except NameError:
+    # is python3
+    unicode = str
+
 register(
     getattr(settings_local, 'APPLICATION_ID'),
     getattr(settings_local, 'REST_API_KEY'),
@@ -318,9 +324,9 @@ class TestFunction(unittest.TestCase):
                                            settings_local.MASTER_KEY))
         try:
             subprocess.call(["parse", "deploy"])
-        except OSError, why:
-            print "parse command line tool must be installed " \
-                "(see https://www.parse.com/docs/cloud_code_guide)"
+        except OSError as why:
+            print("parse command line tool must be installed " \
+                "(see https://www.parse.com/docs/cloud_code_guide)")
             self.skipTest(why)
         os.chdir(original_dir)
 
