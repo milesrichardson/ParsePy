@@ -11,8 +11,15 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import urllib2
-import urllib
+try:
+    from urllib2 import Request, urlopen, HTTPError
+    from urllib import urlencode
+except ImportError:
+    # is Python3
+    from urllib.request import Request, urlopen
+    from urllib.error import HTTPError
+    from urllib.parse import urlencode
+
 import json
 
 import core
@@ -70,10 +77,10 @@ class ParseBase(object):
         url = uri if uri.startswith(API_ROOT) else cls.ENDPOINT_ROOT + uri
         data = kw and json.dumps(kw) or "{}"
         if http_verb == 'GET' and data:
-            url += '?%s' % urllib.urlencode(kw)
+            url += '?%s' % urlencode(kw)
             data = None
 
-        request = urllib2.Request(url, data, headers)
+        request = Request(url, data, headers)
         request.add_header('Content-type', 'application/json')
         request.add_header('X-Parse-Application-Id', app_id)
         request.add_header('X-Parse-REST-API-Key', rest_key)
@@ -84,8 +91,8 @@ class ParseBase(object):
         request.get_method = lambda: http_verb
 
         try:
-            response = urllib2.urlopen(request)
-        except urllib2.HTTPError, e:
+            response = urlopen(request)
+        except HTTPError as e:
             exc = {
                 400: core.ResourceRequestBadRequest,
                 401: core.ResourceRequestLoginRequired,
