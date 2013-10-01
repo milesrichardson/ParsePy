@@ -83,7 +83,7 @@ class Queryset(object):
     @staticmethod
     def convert_to_parse(value):
         from datatypes import ParseType
-        return ParseType.convert_to_parse(value)
+        return ParseType.convert_to_parse(value, as_pointer=True)
 
     @classmethod
     def extract_filter_operator(cls, parameter):

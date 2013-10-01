@@ -21,7 +21,7 @@ class TestCommand(Command):
 
 setup(
     name='parse_rest',
-    version='0.2.20130312',
+    version='0.2.20131001',
     description='A client library for Parse.com\'.s REST API',
     url='https://github.com/dgrtwo/ParsePy',
     packages=['parse_rest'],

@@ -53,6 +53,10 @@ GLOBAL_JSON_TEXT = """{
 """
 
 
+class Game(Object):
+    pass
+
+
 class GameScore(Object):
     pass
 
@@ -215,10 +219,15 @@ class TestQuery(unittest.TestCase):
         # first delete any that exist
         for s in GameScore.Query.all():
             s.delete()
+        for g in Game.Query.all():
+            g.delete()
+
+        self.game = Game(title="Candyland")
+        self.game.save()
 
         self.scores = [
-            GameScore(score=s, player_name='John Doe') for s in range(1, 6)
-            ]
+            GameScore(score=s, player_name='John Doe', game=self.game)
+                        for s in range(1, 6)]
         for s in self.scores:
             s.save()
 
@@ -239,13 +248,17 @@ class TestQuery(unittest.TestCase):
             self.assert_(qobj.score == s.score,
                          "Getting object with .filter() failed")
 
+        # test relational query with other Objects
+        num_scores = GameScore.Query.filter(game=self.game).count()
+        self.assert_(num_scores == len(self.scores),
+                        "Relational query with .filter() failed")
+
     def testGetExceptions(self):
         '''test possible exceptions raised by Queryset.get() method'''
         self.assertRaises(query.QueryResourceDoesNotExist,
                           GameScore.Query.filter(score__gt=20).get)
         self.assertRaises(query.QueryResourceMultipleResultsReturned,
                           GameScore.Query.filter(score__gt=3).get)
-
 
     def testCanQueryDates(self):
         last_week = datetime.datetime.now() - datetime.timedelta(days=7)
@@ -306,9 +319,10 @@ class TestQuery(unittest.TestCase):
                      'Could not make inequality comparison with dates')
 
     def tearDown(self):
-        '''delete all GameScore objects'''
+        '''delete all GameScore and Game objects'''
         for s in GameScore.Query.all():
             s.delete()
+        self.game.delete()
 
 
 class TestFunction(unittest.TestCase):
