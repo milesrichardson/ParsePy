@@ -21,14 +21,29 @@ from query import QueryManager
 class ParseType(object):
 
     @staticmethod
-    def convert_from_parse(parse_data):
+    def convert_from_parse(parse_data, class_name):
+
         is_parse_type = isinstance(parse_data, dict) and '__type' in parse_data
+
+        # if its not a parse type -- simply return it. This means it wasn't a "special class"
         if not is_parse_type:
+
             return parse_data
 
+        # determine just which kind of parse type this element is - ie: a built in parse type such as File, Pointer, User etc 
         parse_type = parse_data['__type']
+
+        # if its a pointer, we need to handle to ensure that we don't mishandle a circular reference
+        if parse_type == "Pointer":
+            
+            # grab the pointer object here
+            return Pointer.from_native(class_name, **parse_data)
+
+            # return a recursive handled Pointer method
+            return True
+
+        # now handle the other parse types accordingly
         native = {
-            'Pointer': Pointer,
             'Date': Date,
             'Bytes': Binary,
             'GeoPoint': GeoPoint,
@@ -73,13 +88,31 @@ class ParseType(object):
 
 
 class Pointer(ParseType):
-
+    
     @classmethod
-    def from_native(cls, **kw):
+    def from_native(cls, parent_class_name = None, **kw):
+        
+        # grab the object data manually here so we can manipulate it before passing back an actual object
         klass = Object.factory(kw.get('className'))
-        return klass.retrieve(kw.get('objectId'))
+        objectData = klass.GET("/" + kw.get('objectId'))
+        
+        # now lets check if we have circular references here
+        if parent_class_name:
+
+            # now lets see if we have any references to the parent class here
+            for key, value in objectData.iteritems():
+                
+                if type(value) == dict and "className" in value and value["className"] == parent_class_name:
+                    
+                    # simply put the reference here as a string  -- not sure what the drawbacks are for this but it works for me 
+                    objectData[key] = value["objectId"] 
+                
+        # set a temporary flag that will remove the recursive pointer types etc
+        klass = Object.factory(kw.get('className'))
+        return klass(**objectData)
 
     def __init__(self, obj):
+
         self._object = obj
 
     def _to_native(self):
@@ -201,8 +234,9 @@ class ParseResource(ParseBase, Pointer):
         return dict([(k, v) for k, v in self.__dict__.items() if allowed(k)])
 
     def __init__(self, **kw):
+
         for key, value in kw.items():
-            setattr(self, key, ParseType.convert_from_parse(value))
+            setattr(self, key, ParseType.convert_from_parse(value, self.__class__.__name__))
 
     def _to_native(self):
         return ParseType.convert_to_parse(self)
@@ -294,6 +328,7 @@ class Object(ParseResource):
 
     @classmethod
     def factory(cls, class_name):
+
         class DerivedClass(cls):
             pass
         DerivedClass.__name__ = str(class_name)
