@@ -77,7 +77,7 @@ class Queryset(object):
     __metaclass__ = QuerysetMetaclass
 
     OPERATORS = [
-        'lt', 'lte', 'gt', 'gte', 'ne', 'in', 'nin', 'exists', 'select', 'dontSelect', 'all'
+        'lt', 'lte', 'gt', 'gte', 'ne', 'in', 'nin', 'exists', 'select', 'dontSelect', 'all', 'relatedTo'
         ]
 
     @staticmethod
@@ -123,7 +123,10 @@ class Queryset(object):
             if operator is None:
                 self._where[attr] = parse_value
             else:
-                self._where[attr]['$' + operator] = parse_value
+                if operator == 'relatedTo':
+                    self._where['$' + operator] = parse_value
+                else:    
+                    self._where[attr]['$' + operator] = parse_value
         return self
 
     def order_by(self, order, descending=False):
