@@ -35,7 +35,7 @@ class User(ParseResource):
     '''
     ENDPOINT_ROOT = '/'.join([API_ROOT, 'users'])
     PROTECTED_ATTRIBUTES = ParseResource.PROTECTED_ATTRIBUTES + [
-        'username', 'sessionToken']
+        'username', 'sessionToken', 'emailVerified']
 
     def is_authenticated(self):
         return self.sessionToken is not None
