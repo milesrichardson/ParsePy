@@ -46,6 +46,10 @@ REST_API_KEY = "REST_API_KEY_HERE"
 MASTER_KEY = "MASTER_KEY_HERE"
 ~~~~~
 
+Note Do **not** give the keys of an existing application with data you want to
+keep: create a new one instead. The test suite will erase any existing CloudCode
+in the app and may accidentally replace or change existing objects.
+
 * install the [Parse CloudCode tool](https://www.parse.com/docs/cloud_code_guide)
 
 You can then test the installation by running:
