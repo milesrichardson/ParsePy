@@ -55,11 +55,21 @@ class User(ParseResource):
         return {'X-Parse-Session-Token': self.sessionToken}
 
     @login_required
-    def save(self):
+    def save(self, batch=False):
         session_header = {'X-Parse-Session-Token': self.sessionToken}
         url = self._absolute_url
         data = self._to_native()
-        return self.__class__.PUT(url, extra_headers=session_header, **data)
+
+        response = self.__class__.PUT(url, extra_headers=session_header,
+                                      batch=batch, **data)
+
+        def call_back(response_dict):
+            self.updatedAt = response_dict['updatedAt']
+
+        if batch:
+            return response, call_back
+        else:
+            call_back(response)
 
     @login_required
     def delete(self):

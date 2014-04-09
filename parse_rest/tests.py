@@ -425,6 +425,22 @@ class TestUser(unittest.TestCase):
         self.assert_(User.Query.filter(phone=phone_number).exists(),
                      'Failed to update user data. New info not on Parse')
 
+    def testCanBatchUpdate(self):
+        user = self._get_logged_user()
+        phone_number = "555-0134"
+
+        original_updatedAt = user.updatedAt
+
+        user.phone = phone_number
+        batcher = ParseBatcher()
+        batcher.batch_save([user])
+
+        self.assert_(User.Query.filter(phone=phone_number).exists(),
+                     'Failed to batch update user data. New info not on Parse')
+        self.assert_(user.updatedAt != original_updatedAt,
+                     'Failed to batch update user data: updatedAt not changed')
+
+
 
 if __name__ == "__main__":
     # command line
