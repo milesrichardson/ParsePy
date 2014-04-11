@@ -125,8 +125,13 @@ class Queryset(object):
             else:
                 if operator == 'relatedTo':
                     self._where['$' + operator] = parse_value
-                else:    
-                    self._where[attr]['$' + operator] = parse_value
+                else:
+                    try:
+                        self._where[attr]['$' + operator] = parse_value
+                    except TypeError:
+                        # self._where[attr] wasn't settable
+                        raise ValueError("Cannot filter for a constraint " +
+                                    "after filtering for a specific value")
         return self
 
     def order_by(self, order, descending=False):
