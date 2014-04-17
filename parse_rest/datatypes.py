@@ -201,7 +201,8 @@ class File(ParseType):
     def _to_native(self):
         return {
             '__type': 'File',
-            'name': self._name
+            'name': self._name,
+            'url': self._file_url
             }
 
     url = property(lambda self: self._file_url)
