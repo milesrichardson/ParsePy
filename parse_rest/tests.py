@@ -441,6 +441,12 @@ class TestUser(unittest.TestCase):
                      'Failed to batch update user data: updatedAt not changed')
 
 
+def run_tests():
+    """Run all tests in the parse_rest package"""
+    tests = unittest.TestLoader().loadTestsFromNames(['parse_rest.tests'])
+    t = unittest.TextTestRunner(verbosity=1)
+    t.run(tests)
+
 
 if __name__ == "__main__":
     # command line

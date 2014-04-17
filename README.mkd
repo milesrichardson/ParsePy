@@ -52,9 +52,10 @@ in the app and may accidentally replace or change existing objects.
 
 * install the [Parse CloudCode tool](https://www.parse.com/docs/cloud_code_guide)
 
-You can then test the installation by running:
+You can then test the installation by running the following in a Python prompt:
 
-    python setup.py test
+    from parse_rest import tests
+    tests.run_tests()
 
 
 Usage
