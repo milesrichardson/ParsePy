@@ -149,8 +149,8 @@ class Date(ParseType):
             self._date = Date._from_str(date)
 
     def _to_native(self):
-        return {
-            '__type': 'Date', 'iso': self._date.isoformat()
+        return {  #parse expects an iso8601 with 3 digits milliseonds and not 6
+            '__type': 'Date', 'iso': '{0}Z'.format(self._date.strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3])
             }
 
 
