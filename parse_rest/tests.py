@@ -208,8 +208,8 @@ class TestTypes(unittest.TestCase):
         self.assert_(type(native_date) is dict,
                      'Could not serialize date into dict')
         iso_date = native_date.get('iso')
-        self.assert_(iso_date == self.now.isoformat(),
-                     'Expected %s. Got %s' % (self.now.isoformat(), iso_date))
+        now = '{0}Z'.format(self.now.isoformat()[:-3])
+        self.assert_(iso_date == now, 'Expected %s. Got %s' % (now, iso_date))
 
 
 class TestQuery(unittest.TestCase):
