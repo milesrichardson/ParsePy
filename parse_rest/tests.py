@@ -17,6 +17,7 @@ from connection import register, ParseBatcher
 from datatypes import GeoPoint, Object, Function
 from user import User
 import query
+from installation import Push
 
 try:
     import settings_local
@@ -439,6 +440,29 @@ class TestUser(unittest.TestCase):
                      'Failed to batch update user data. New info not on Parse')
         self.assert_(user.updatedAt != original_updatedAt,
                      'Failed to batch update user data: updatedAt not changed')
+
+
+class TestPush(unittest.TestCase):
+    """
+    Test Push functionality. Currently just sends the messages, ensuring they
+    don't lead to an error, but does not test whether the messages actually
+    went through and with the proper attributes (may be worthwhile to
+    set up such a test).
+    """
+    def testCanMessage(self):
+        Push.message("Giants beat the Mets.",
+                     channels=["Giants", "Mets"])
+
+        Push.message("Willie Hayes injured by own pop fly.",
+                     channels=["Giants"], where={"injuryReports": True})
+
+        Push.message("Giants scored against the A's! It's now 2-2.",
+                     channels=["Giants"], where={"scores": True})
+
+    def testCanAlert(self):
+        Push.alert({"alert": "The Mets scored! The game is now tied 1-1.",
+                    "badge": "Increment", "title": "Mets Score"},
+                   channels=["Mets"], where={"scores": True})
 
 
 def run_tests():

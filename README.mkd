@@ -371,6 +371,36 @@ u.save()
 u.delete()
 ~~~~~
 
+Push
+---------------
+
+You can also send notifications to your users using [Parse's Push functionality](https://parse.com/products/push), through the Push object:
+
+~~~~~ {python}
+from parse_rest.installation import Push
+
+Push.message("The Giants won against the Mets 2-3.",
+             channels=["Giants", "Mets"])
+~~~~~
+
+This will push a message to all users subscribed to the "Giants" and "Mets" channels. Your alert can be restricted based on [Advanced Targeting](https://www.parse.com/docs/push_guide#sending-queries/REST) by specifying the `where` argument:
+
+~~~~~ {python}
+Push.message("Willie Hayes injured by own pop fly.",
+             channels=["Giants"], where={"injuryReports": True})
+
+Push.message("Giants scored against the A's! It's now 2-2.",
+             channels=["Giants"], where={"scores": True})
+~~~~~
+
+If you wish to include more than a simple message in your notification, such as incrementing the app badge in iOS or adding a title in Android, use the `alert` method and pass the actions in a dictionary:
+
+~~~~~ {python}
+Push.alert({"alert": "The Mets scored! The game is now tied 1-1.",
+            "badge": "Increment", "title": "Mets Score"}, channels=["Mets"],
+            where={"scores": True})
+~~~~~
+
 
 Cloud Functions
 ---------------
