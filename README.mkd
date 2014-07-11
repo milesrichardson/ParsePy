@@ -355,6 +355,12 @@ or log in an existing user with
 u = User.login("dhelmet", "12345")
 ~~~~~
 
+You can also request a password reset for a specific user with
+
+~~~~~ {python}
+User.request_password_reset(email="dhelmet@gmail.com")
+~~~~~
+
 If you'd like to log in a user with Facebook or Twitter, and have already obtained an access token (including a user ID and expiration date) to do so, you can log in like this:
 
 ~~~~ {python}
