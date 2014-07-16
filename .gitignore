@@ -7,3 +7,4 @@ settings_local.py
 dist
 MANIFEST
 global.json
+parse_rest.egg-info

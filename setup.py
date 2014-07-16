@@ -1,5 +1,5 @@
 import os
-from distutils.core import setup, Command
+from setuptools import setup, Command
 from unittest import TextTestRunner, TestLoader
 
 
@@ -26,8 +26,7 @@ setup(
     description='A client library for Parse.com\'.s REST API',
     url='https://github.com/dgrtwo/ParsePy',
     packages=['parse_rest'],
-    package_data={"parse_rest":
-                    [os.path.join("cloudcode", "*", "*")]},
+    package_data={"parse_rest": [os.path.join("cloudcode", "*", "*")]},
     maintainer='David Robinson',
     maintainer_email='dgrtwo@princeton.edu',
     cmdclass={'test': TestCommand},
