@@ -96,12 +96,24 @@ class Queryset(object):
     def __init__(self, manager):
         self._manager = manager
         self._where = collections.defaultdict(dict)
+        self._select_related = []
         self._options = {}
+        self._result_cache = None
 
     def __iter__(self):
         return iter(self._fetch())
 
+    def __len__(self):
+        return self._fetch(count=True)
+
+    def __getitem__(self, key):
+        if isinstance(key, slice):
+            raise AttributeError("Slice is not supported for now.")
+        return self._fetch()[key]
+
     def _fetch(self, count=False):
+        if self._result_cache:
+            return len(self._result_cache) if count else self._result_cache
         """
         Return a list of objects matching query, or if count == True return
         only the number of objects matching.
@@ -109,12 +121,14 @@ class Queryset(object):
         options = dict(self._options)  # make a local copy
         if self._where:
             # JSON encode WHERE values
-            where = json.dumps(self._where)
-            options.update({'where': where})
+            options['where'] = json.dumps(self._where)
+        if self._select_related:
+            options['include'] = ','.join(self._select_related)
         if count:
             return self._manager._count(**options)
 
-        return self._manager._fetch(**options)
+        self._result_cache = self._manager._fetch(**options)
+        return self._result_cache
 
     def filter(self, **kw):
         for name, value in kw.items():
@@ -122,16 +136,15 @@ class Queryset(object):
             attr, operator = Queryset.extract_filter_operator(name)
             if operator is None:
                 self._where[attr] = parse_value
+            elif operator == 'relatedTo':
+                self._where['$' + operator] = parse_value
             else:
-                if operator == 'relatedTo':
-                    self._where['$' + operator] = parse_value
-                else:
-                    try:
-                        self._where[attr]['$' + operator] = parse_value
-                    except TypeError:
-                        # self._where[attr] wasn't settable
-                        raise ValueError("Cannot filter for a constraint " +
-                                    "after filtering for a specific value")
+                try:
+                    self._where[attr]['$' + operator] = parse_value
+                except TypeError:
+                    # self._where[attr] wasn't settable
+                    raise ValueError("Cannot filter for a constraint " +
+                                "after filtering for a specific value")
         return self
 
     def order_by(self, order, descending=False):
@@ -139,12 +152,15 @@ class Queryset(object):
         self._options['order'] = descending and ('-' + order) or order
         return self
 
+    def select_related(self, *fields):
+        self._select_related.extend(fields)
+        return self
+
     def count(self):
-        return self._fetch(count=True)
+        return len(self)
 
     def exists(self):
-        results = self._fetch()
-        return len(results) > 0
+        return bool(self)
 
     def get(self):
         results = self._fetch()

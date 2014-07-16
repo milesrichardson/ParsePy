@@ -27,20 +27,19 @@ class ParseType(object):
 
         # if its not a parse type -- simply return it. This means it wasn't a "special class"
         if not is_parse_type:
-
             return parse_data
 
-        # determine just which kind of parse type this element is - ie: a built in parse type such as File, Pointer, User etc 
+        # determine just which kind of parse type this element is - ie: a built in parse type such as File, Pointer, User etc
         parse_type = parse_data['__type']
 
         # if its a pointer, we need to handle to ensure that we don't mishandle a circular reference
         if parse_type == "Pointer":
-            
             # grab the pointer object here
             return Pointer.from_native(class_name, **parse_data)
 
-            # return a recursive handled Pointer method
-            return True
+        # embedded object by select_related
+        if parse_type == "Object":
+            return EmbeddedObject.from_native(class_name, **parse_data)
 
         # now handle the other parse types accordingly
         native = {
@@ -88,25 +87,29 @@ class ParseType(object):
 
 
 class Pointer(ParseType):
-    
+
     @classmethod
-    def from_native(cls, parent_class_name = None, **kw):
-        
+    def _prevent_circular(cls, parent_class_name, objectData):
+        # TODO this should be replaced with more clever checking, instead of simple class mathching original id should be compared
+        # also circular refs through more object are now ignored, in fact lazy loaded references will be best solution
+        objectData = dict(objectData)
+        # now lets see if we have any references to the parent class here
+        for key, value in objectData.iteritems():
+            if isinstance(value, dict) and "className" in value and value["className"] == parent_class_name:
+                # simply put the reference here as a string  -- not sure what the drawbacks are for this but it works for me
+                objectData[key] = value["objectId"]
+        return objectData
+
+    @classmethod
+    def from_native(cls, parent_class_name=None, **kw):
         # grab the object data manually here so we can manipulate it before passing back an actual object
         klass = Object.factory(kw.get('className'))
         objectData = klass.GET("/" + kw.get('objectId'))
-        
+
         # now lets check if we have circular references here
         if parent_class_name:
+            objectData = cls._prevent_circular(parent_class_name, objectData)
 
-            # now lets see if we have any references to the parent class here
-            for key, value in objectData.iteritems():
-                
-                if type(value) == dict and "className" in value and value["className"] == parent_class_name:
-                    
-                    # simply put the reference here as a string  -- not sure what the drawbacks are for this but it works for me 
-                    objectData[key] = value["objectId"] 
-                
         # set a temporary flag that will remove the recursive pointer types etc
         klass = Object.factory(kw.get('className'))
         return klass(**objectData)
@@ -121,6 +124,15 @@ class Pointer(ParseType):
             'className': self._object.__class__.__name__,
             'objectId': self._object.objectId
             }
+
+
+class EmbeddedObject(ParseType):
+    @classmethod
+    def from_native(cls, parent_class_name=None, **kw):
+        if parent_class_name:
+            kw = Pointer._prevent_circular(parent_class_name, kw)
+        klass = Object.factory(kw.get('className'))
+        return klass(**kw)
 
 
 class Relation(ParseType):
@@ -381,7 +393,7 @@ class Object(ParseResource):
                     "className": className,
                     "objectId": objectId
                     } for objectId in objectsId]
-        
+
         payload = {
             key: {
                  "__op": action,
