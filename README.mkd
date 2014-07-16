@@ -311,6 +311,14 @@ page_one = posts.limit(10) # Will return the most 10 recent posts.
 page_two = posts.skip(10).limit(10) # Will return posts 11-20
 ~~~~~
 
+#### Related objects
+
+You can specify "join" attributes to get related object with single query.
+
+~~~~~ {python}
+posts = Post.Query.all().select_related("author", "editor")
+~~~~~
+
 #### Composability/Chaining of Querysets
 
 The example above can show the most powerful aspect of Querysets, that

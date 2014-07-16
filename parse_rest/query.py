@@ -96,7 +96,9 @@ class Queryset(object):
     def __init__(self, manager):
         self._manager = manager
         self._where = collections.defaultdict(dict)
+        self._select_related = []
         self._options = {}
+        self._result_cache = None
 
     def __iter__(self):
         return iter(self._fetch())
@@ -104,7 +106,14 @@ class Queryset(object):
     def __len__(self):
         return self._fetch(count=True)
 
+    def __getitem__(self, key):
+        if isinstance(key, slice):
+            raise AttributeError("Slice is not supported for now.")
+        return self._fetch()[key]
+
     def _fetch(self, count=False):
+        if self._result_cache:
+            return len(self._result_cache) if count else self._result_cache
         """
         Return a list of objects matching query, or if count == True return
         only the number of objects matching.
@@ -112,12 +121,14 @@ class Queryset(object):
         options = dict(self._options)  # make a local copy
         if self._where:
             # JSON encode WHERE values
-            where = json.dumps(self._where)
-            options.update({'where': where})
+            options['where'] = json.dumps(self._where)
+        if self._select_related:
+            options['include'] = ','.join(self._select_related)
         if count:
             return self._manager._count(**options)
 
-        return self._manager._fetch(**options)
+        self._result_cache = self._manager._fetch(**options)
+        return self._result_cache
 
     def filter(self, **kw):
         for name, value in kw.items():
@@ -139,6 +150,10 @@ class Queryset(object):
     def order_by(self, order, descending=False):
         # add a minus sign before the order value if descending == True
         self._options['order'] = descending and ('-' + order) or order
+        return self
+
+    def select_related(self, *fields):
+        self._select_related.extend(fields)
         return self
 
     def count(self):
