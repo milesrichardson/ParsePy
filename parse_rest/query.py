@@ -101,6 +101,9 @@ class Queryset(object):
     def __iter__(self):
         return iter(self._fetch())
 
+    def __len__(self):
+        return self._fetch(count=True)
+
     def _fetch(self, count=False):
         """
         Return a list of objects matching query, or if count == True return
@@ -122,16 +125,15 @@ class Queryset(object):
             attr, operator = Queryset.extract_filter_operator(name)
             if operator is None:
                 self._where[attr] = parse_value
+            elif operator == 'relatedTo':
+                self._where['$' + operator] = parse_value
             else:
-                if operator == 'relatedTo':
-                    self._where['$' + operator] = parse_value
-                else:
-                    try:
-                        self._where[attr]['$' + operator] = parse_value
-                    except TypeError:
-                        # self._where[attr] wasn't settable
-                        raise ValueError("Cannot filter for a constraint " +
-                                    "after filtering for a specific value")
+                try:
+                    self._where[attr]['$' + operator] = parse_value
+                except TypeError:
+                    # self._where[attr] wasn't settable
+                    raise ValueError("Cannot filter for a constraint " +
+                                "after filtering for a specific value")
         return self
 
     def order_by(self, order, descending=False):
@@ -140,11 +142,10 @@ class Queryset(object):
         return self
 
     def count(self):
-        return self._fetch(count=True)
+        return len(self)
 
     def exists(self):
-        results = self._fetch()
-        return len(results) > 0
+        return bool(self)
 
     def get(self):
         results = self._fetch()
