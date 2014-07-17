@@ -125,9 +125,11 @@ class ParseBatcher(ParseBase):
         Given a list of create, update or delete methods to call, call all
         of them in a single batch operation.
         """
-        #accepts also empty list (or generator) - it allows call batch directly
-        # with query result (eventually empty)
-        queries, callbacks = list(zip(*[m(batch=True) for m in methods])) or ([], [])
+        methods = list(methods) # methods can be iterator
+        if not methods:
+            #accepts also empty list (or generator) - it allows call batch directly with query result (eventually empty)
+            return
+        queries, callbacks = list(zip(*[m(batch=True) for m in methods]))
         # perform all the operations in one batch
         responses = self.execute("", "POST", requests=queries)
         # perform the callbacks with the response data (updating the existing
