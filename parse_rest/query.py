@@ -13,8 +13,6 @@
 
 import json
 import collections
-import copy
-import six
 
 
 class QueryResourceDoesNotExist(Exception):
@@ -38,7 +36,7 @@ class QueryManager(object):
         return [klass(**it) for it in klass.GET(uri, **kw).get('results')]
 
     def _count(self, **kw):
-        kw.update({"count": 1, "limit": 0})
+        kw.update({"count": 1})
         return self.model_class.GET(self.model_class.ENDPOINT_ROOT, **kw).get('count')
 
     def all(self):
@@ -54,22 +52,7 @@ class QueryManager(object):
         return self.filter(**kw).get()
 
 
-class QuerysetMetaclass(type):
-    """metaclass to add the dynamically generated comparison functions"""
-    def __new__(mcs, name, bases, dct):
-        cls = super(QuerysetMetaclass, mcs).__new__(mcs, name, bases, dct)
-
-        for fname in ['limit', 'skip']:
-            def func(self, value, fname=fname):
-                s = copy.deepcopy(self)
-                s._options[fname] = int(value)
-                return s
-            setattr(cls, fname, func)
-
-        return cls
-
-
-class Queryset(six.with_metaclass(QuerysetMetaclass, object)):
+class Queryset(object):
 
     OPERATORS = [
         'lt', 'lte', 'gt', 'gte', 'ne', 'in', 'nin', 'exists', 'select', 'dontSelect', 'all', 'relatedTo'
@@ -99,7 +82,9 @@ class Queryset(six.with_metaclass(QuerysetMetaclass, object)):
         return iter(self._fetch())
 
     def __len__(self):
-        return self._fetch(count=True)
+        #don't use count query for len operator
+        #count doesn't return real size of result in all cases (eg if query contains skip option)
+        return len(self._fetch())
 
     def __getitem__(self, key):
         if isinstance(key, slice):
@@ -107,7 +92,7 @@ class Queryset(six.with_metaclass(QuerysetMetaclass, object)):
         return self._fetch()[key]
 
     def _fetch(self, count=False):
-        if self._result_cache:
+        if self._result_cache is not None:
             return len(self._result_cache) if count else self._result_cache
         """
         Return a list of objects matching query, or if count == True return
@@ -141,6 +126,14 @@ class Queryset(six.with_metaclass(QuerysetMetaclass, object)):
                     raise ValueError("Cannot filter for a constraint after filtering for a specific value")
         return self
 
+    def limit(self, value):
+        self._options['limit'] = int(value)
+        return self
+
+    def skip(self, value):
+        self._options['skip'] = int(value)
+        return self
+
     def order_by(self, order, descending=False):
         # add a minus sign before the order value if descending == True
         self._options['order'] = descending and ('-' + order) or order
@@ -151,7 +144,7 @@ class Queryset(six.with_metaclass(QuerysetMetaclass, object)):
         return self
 
     def count(self):
-        return len(self)
+        return self._fetch(count=True)
 
     def exists(self):
         return bool(self)

@@ -55,8 +55,7 @@ class ParseBase(object):
         command.
         """
         if batch:
-            ret = {"method": http_verb,
-                   "path": uri.split("parse.com")[1]}
+            ret = {"method": http_verb, "path": uri.split("parse.com", 1)[1]}
             if kw:
                 ret["body"] = kw
             return ret
@@ -126,7 +125,9 @@ class ParseBatcher(ParseBase):
         Given a list of create, update or delete methods to call, call all
         of them in a single batch operation.
         """
-        queries, callbacks = zip(*[m(batch=True) for m in methods])
+        #accepts also empty list (or generator) - it allows call batch directly
+        # with query result (eventually empty)
+        queries, callbacks = list(zip(*[m(batch=True) for m in methods])) or ([], [])
         # perform all the operations in one batch
         responses = self.execute("", "POST", requests=queries)
         # perform the callbacks with the response data (updating the existing
@@ -136,8 +137,8 @@ class ParseBatcher(ParseBase):
 
     def batch_save(self, objects):
         """save a list of objects in one operation"""
-        self.batch([o.save for o in objects])
+        self.batch(o.save for o in objects)
 
     def batch_delete(self, objects):
         """delete a list of objects in one operation"""
-        self.batch([o.delete for o in objects])
+        self.batch(o.delete for o in objects)
