@@ -14,11 +14,8 @@
 import json
 import collections
 import copy
+import six
 
-try:
-    unicode = unicode
-except NameError:
-    unicode = str
 
 class QueryResourceDoesNotExist(Exception):
     '''Query returned no results'''
@@ -42,8 +39,7 @@ class QueryManager(object):
 
     def _count(self, **kw):
         kw.update({"count": 1, "limit": 0})
-        return self.model_class.GET(self.model_class.ENDPOINT_ROOT,
-                                        **kw).get('count')
+        return self.model_class.GET(self.model_class.ENDPOINT_ROOT, **kw).get('count')
 
     def all(self):
         return Queryset(self)
@@ -60,8 +56,8 @@ class QueryManager(object):
 
 class QuerysetMetaclass(type):
     """metaclass to add the dynamically generated comparison functions"""
-    def __new__(cls, name, bases, dct):
-        cls = super(QuerysetMetaclass, cls).__new__(cls, name, bases, dct)
+    def __new__(mcs, name, bases, dct):
+        cls = super(QuerysetMetaclass, mcs).__new__(mcs, name, bases, dct)
 
         for fname in ['limit', 'skip']:
             def func(self, value, fname=fname):
@@ -73,16 +69,15 @@ class QuerysetMetaclass(type):
         return cls
 
 
-class Queryset(object):
-    __metaclass__ = QuerysetMetaclass
+class Queryset(six.with_metaclass(QuerysetMetaclass, object)):
 
     OPERATORS = [
         'lt', 'lte', 'gt', 'gte', 'ne', 'in', 'nin', 'exists', 'select', 'dontSelect', 'all', 'relatedTo'
-        ]
+    ]
 
     @staticmethod
     def convert_to_parse(value):
-        from datatypes import ParseType
+        from parse_rest.datatypes import ParseType
         return ParseType.convert_to_parse(value, as_pointer=True)
 
     @classmethod
@@ -143,8 +138,7 @@ class Queryset(object):
                     self._where[attr]['$' + operator] = parse_value
                 except TypeError:
                     # self._where[attr] wasn't settable
-                    raise ValueError("Cannot filter for a constraint " +
-                                "after filtering for a specific value")
+                    raise ValueError("Cannot filter for a constraint after filtering for a specific value")
         return self
 
     def order_by(self, order, descending=False):
@@ -171,4 +165,4 @@ class Queryset(object):
         return results[0]
 
     def __repr__(self):
-        return unicode(self._fetch())
+        return repr(self._fetch())

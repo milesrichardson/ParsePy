@@ -10,12 +10,14 @@
 #
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+from __future__ import unicode_literals
 
 import base64
 import datetime
+import six
 
-from connection import API_ROOT, ParseBase
-from query import QueryManager
+from parse_rest.connection import API_ROOT, ParseBase
+from parse_rest.query import QueryManager
 
 
 class ParseType(object):
@@ -94,7 +96,7 @@ class Pointer(ParseType):
         # also circular refs through more object are now ignored, in fact lazy loaded references will be best solution
         objectData = dict(objectData)
         # now lets see if we have any references to the parent class here
-        for key, value in objectData.iteritems():
+        for key, value in six.iteritems(objectData):
             if isinstance(value, dict) and "className" in value and value["className"] == parent_class_name:
                 # simply put the reference here as a string  -- not sure what the drawbacks are for this but it works for me
                 objectData[key] = value["objectId"]
@@ -115,7 +117,6 @@ class Pointer(ParseType):
         return klass(**objectData)
 
     def __init__(self, obj):
-
         self._object = obj
 
     def _to_native(self):
@@ -157,7 +158,7 @@ class Date(ParseType):
         """Can be initialized either with a string or a datetime"""
         if isinstance(date, datetime.datetime):
             self._date = date
-        elif isinstance(date, unicode):
+        elif isinstance(date, six.string_types):
             self._date = Date._from_str(date)
 
     def _to_native(self):
@@ -247,7 +248,6 @@ class ParseResource(ParseBase, Pointer):
         return dict([(k, v) for k, v in self.__dict__.items() if allowed(k)])
 
     def __init__(self, **kw):
-
         for key, value in kw.items():
             setattr(self, key, ParseType.convert_from_parse(value, self.__class__.__name__))
 
@@ -324,19 +324,21 @@ class ParseResource(ParseBase, Pointer):
     updatedAt = property(_get_updated_datetime, _set_updated_datetime)
 
     def __repr__(self):
-        return '<%s:%s>' % (unicode(self.__class__.__name__), self.objectId)
+        return '<%s:%s>' % (self.__class__.__name__, self.objectId)
 
 
 class ObjectMetaclass(type):
-    def __new__(cls, name, bases, dct):
-        cls = super(ObjectMetaclass, cls).__new__(cls, name, bases, dct)
-        cls.set_endpoint_root()
-        cls.Query = QueryManager(cls)
+    def __new__(mcs, name, bases, dct):
+        cls = super(ObjectMetaclass, mcs).__new__(mcs, name, bases, dct)
+        # attr check must be here because of specific six.with_metaclass implemetantion where metaclass is used also for
+        # internal NewBase which hasn't set_endpoint_root method
+        if hasattr(cls, 'set_endpoint_root'):
+            cls.set_endpoint_root()
+            cls.Query = QueryManager(cls)
         return cls
 
 
-class Object(ParseResource):
-    __metaclass__ = ObjectMetaclass
+class Object(six.with_metaclass(ObjectMetaclass, ParseResource)):
     ENDPOINT_ROOT = '/'.join([API_ROOT, 'classes'])
 
     @classmethod
@@ -357,7 +359,8 @@ class Object(ParseResource):
 
     @property
     def _absolute_url(self):
-        if not self.objectId: return None
+        if not self.objectId:
+            return None
         return '/'.join([self.__class__.ENDPOINT_ROOT, self.objectId])
 
     @property

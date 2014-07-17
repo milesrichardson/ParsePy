@@ -11,18 +11,13 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-try:
-    from urllib2 import Request, urlopen, HTTPError
-    from urllib import urlencode
-except ImportError:
-    # is Python3
-    from urllib.request import Request, urlopen
-    from urllib.error import HTTPError
-    from urllib.parse import urlencode
+from six.moves.urllib.request import Request, urlopen
+from six.moves.urllib.error import HTTPError
+from six.moves.urllib.parse import urlencode
 
 import json
 
-import core
+from parse_rest import core
 
 API_ROOT = 'https://api.parse.com/1'
 ACCESS_KEYS = {}
@@ -79,6 +74,8 @@ class ParseBase(object):
         if http_verb == 'GET' and data:
             url += '?%s' % urlencode(kw)
             data = None
+        else:
+            data = data.encode('utf-8')
 
         request = Request(url, data, headers)
         request.add_header('Content-type', 'application/json')
@@ -101,7 +98,7 @@ class ParseBase(object):
                 }.get(e.code, core.ParseError)
             raise exc(e.read())
 
-        return json.loads(response.read())
+        return json.loads(response.read().decode('utf-8'))
 
     @classmethod
     def GET(cls, uri, **kw):
