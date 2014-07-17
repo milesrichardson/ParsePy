@@ -288,12 +288,25 @@ class TestQuery(unittest.TestCase):
         self.assertEqual(len(scores_ne_2), 4)
         self.assertTrue(all([s.score != 2 for s in scores_ne_2]))
 
-        # test chaining
+    def testChaining(self):
         lt_4_gt_2 = GameScore.Query.filter(score__lt=4).filter(score__gt=2)
         self.assertEqual(len(lt_4_gt_2), 1, 'chained lt+gt not working')
         self.assertEqual(lt_4_gt_2[0].score, 3, 'chained lt+gt not working')
+
         q = GameScore.Query.filter(score__gt=3, score__lt=3)
         self.assertFalse(q.exists(), "chained lt+gt not working")
+
+        # test original queries are idependent after filting
+        q_all = GameScore.Query.all()
+        q_special = q_all.filter(score__gt=3)
+        self.assertEqual(len(q_all), 5)
+        self.assertEqual(len(q_special), 2)
+
+        q_all = GameScore.Query.all()
+        q_limit = q_all.limit(1)
+        self.assertEqual(len(q_all), 5)
+        self.assertEqual(len(q_limit), 1)
+
 
     def testOrderBy(self):
         """test three options- order, limit, and skip"""

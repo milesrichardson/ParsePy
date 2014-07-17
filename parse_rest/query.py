@@ -12,6 +12,7 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import json
+import copy
 import collections
 
 
@@ -78,6 +79,13 @@ class Queryset(object):
         self._options = {}
         self._result_cache = None
 
+    def __deepcopy__(self, memo):
+        q = self.__class__(self._manager)
+        q._where = copy.deepcopy(self._where, memo)
+        q._options = copy.deepcopy(self._options, memo)
+        q._select_related.extend(self._select_related)
+        return q
+
     def __iter__(self):
         return iter(self._fetch())
 
@@ -111,37 +119,40 @@ class Queryset(object):
         return self._result_cache
 
     def filter(self, **kw):
+        q = copy.deepcopy(self)
         for name, value in kw.items():
             parse_value = Queryset.convert_to_parse(value)
             attr, operator = Queryset.extract_filter_operator(name)
             if operator is None:
-                self._where[attr] = parse_value
+                q._where[attr] = parse_value
             elif operator == 'relatedTo':
-                self._where['$' + operator] = parse_value
+                q._where['$' + operator] = parse_value
             else:
-                try:
-                    self._where[attr]['$' + operator] = parse_value
-                except TypeError:
-                    # self._where[attr] wasn't settable
-                    raise ValueError("Cannot filter for a constraint after filtering for a specific value")
-        return self
+                if not isinstance(q._where[attr], dict):
+                    q._where[attr] = {}
+                q._where[attr]['$' + operator] = parse_value
+        return q
 
     def limit(self, value):
-        self._options['limit'] = int(value)
-        return self
+        q = copy.deepcopy(self)
+        q._options['limit'] = int(value)
+        return q
 
     def skip(self, value):
-        self._options['skip'] = int(value)
-        return self
+        q = copy.deepcopy(self)
+        q._options['skip'] = int(value)
+        return q
 
     def order_by(self, order, descending=False):
+        q = copy.deepcopy(self)
         # add a minus sign before the order value if descending == True
-        self._options['order'] = descending and ('-' + order) or order
-        return self
+        q._options['order'] = descending and ('-' + order) or order
+        return q
 
     def select_related(self, *fields):
-        self._select_related.extend(fields)
-        return self
+        q = copy.deepcopy(self)
+        q._select_related.extend(fields)
+        return q
 
     def count(self):
         return self._fetch(count=True)
