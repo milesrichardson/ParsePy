@@ -314,8 +314,8 @@ class Object(six.with_metaclass(ObjectMetaclass, ParseResource)):
         system types like _User are mapped to types without underscore (parse_resr.user.User)
         If user don't declare matching type, class is created on the fly
         """
-        class_name = class_name.lstrip('_')
-        types = cls.__subclasses__()
+        class_name = str(class_name.lstrip('_'))
+        types = ParseResource.__subclasses__()
         while types:
             t = types.pop()
             if t.__name__ == class_name:
