@@ -46,7 +46,7 @@ class User(ParseResource):
         if password is not None:
             self = User.login(self.username, password)
 
-        user = User.retrieve(self.objectId)
+        user = User.Query.get(objectId=self.objectId)
         if user.objectId == self.objectId and user.sessionToken == session_token:
             self.sessionToken = session_token
 
