@@ -310,12 +310,19 @@ class Object(six.with_metaclass(ObjectMetaclass, ParseResource)):
 
     @classmethod
     def factory(cls, class_name):
-
-        class DerivedClass(cls):
-            pass
-        DerivedClass.__name__ = str(class_name)
-        DerivedClass.set_endpoint_root()
-        return DerivedClass
+        """find proper Object subclass matching class_name
+        system types like _User are mapped to types without underscore (parse_resr.user.User)
+        If user don't declare matching type, class is created on the fly
+        """
+        class_name = class_name.lstrip('_')
+        types = cls.__subclasses__()
+        while types:
+            t = types.pop()
+            if t.__name__ == class_name:
+                return t
+            types.extend(t.__subclasses__())
+        else:
+            return type(class_name, (Object,), {})
 
     @classmethod
     def set_endpoint_root(cls):

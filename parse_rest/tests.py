@@ -90,6 +90,10 @@ class TestObject(unittest.TestCase):
     def testCanInstantiateParseType(self):
         self.assertEqual(self.sao_paulo.location.latitude, -23.5)
 
+    def testFactory(self):
+        self.assertEqual(Object.factory('_User'), User)
+        self.assertEqual(Object.factory('GameScore'), GameScore)
+
     def testCanSaveDates(self):
         now = datetime.datetime.now()
         self.score.last_played = now
@@ -138,7 +142,7 @@ class TestObject(unittest.TestCase):
 
         # get the object, see if it has saved
         qs = GameScore.Query.get(objectId=self.score.objectId)
-        self.assertIsInstance(qs.item, Object, "Associated CollectedItem is not an object")
+        self.assertIsInstance(qs.item, CollectedItem)
         self.assertEqual(qs.item.type, "Sword", "Associated CollectedItem does not have correct attributes")
 
     def testBatch(self):
