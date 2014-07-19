@@ -10,18 +10,29 @@
 #
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+from __future__ import unicode_literals
 
 import base64
 import datetime
+import six
 
-from connection import API_ROOT, ParseBase
-from query import QueryManager
+from parse_rest.connection import API_ROOT, ParseBase
+from parse_rest.query import QueryManager
+
+
+def complex_type(name=None):
+    '''Decorator for registering complex types'''
+    def wrapped(cls):
+        ParseType.type_mapping[name or cls.__name__] = cls
+        return cls
+    return wrapped
 
 
 class ParseType(object):
+    type_mapping = {}
 
     @staticmethod
-    def convert_from_parse(parse_data, class_name):
+    def convert_from_parse(parse_data):
 
         is_parse_type = isinstance(parse_data, dict) and '__type' in parse_data
 
@@ -29,28 +40,8 @@ class ParseType(object):
         if not is_parse_type:
             return parse_data
 
-        # determine just which kind of parse type this element is - ie: a built in parse type such as File, Pointer, User etc
-        parse_type = parse_data['__type']
-
-        # if its a pointer, we need to handle to ensure that we don't mishandle a circular reference
-        if parse_type == "Pointer":
-            # grab the pointer object here
-            return Pointer.from_native(class_name, **parse_data)
-
-        # embedded object by select_related
-        if parse_type == "Object":
-            return EmbeddedObject.from_native(class_name, **parse_data)
-
-        # now handle the other parse types accordingly
-        native = {
-            'Date': Date,
-            'Bytes': Binary,
-            'GeoPoint': GeoPoint,
-            'File': File,
-            'Relation': Relation
-            }.get(parse_type)
-
-        return native and native.from_native(**parse_data) or parse_data
+        native = ParseType.type_mapping.get(parse_data['__type'])
+        return  native.from_native(**parse_data) if native else parse_data
 
     @staticmethod
     def convert_to_parse(python_object, as_pointer=False):
@@ -67,7 +58,7 @@ class ParseType(object):
         transformation_map = {
             datetime.datetime: Date,
             Object: Pointer
-            }
+        }
 
         if python_type in transformation_map:
             klass = transformation_map.get(python_type)
@@ -83,39 +74,20 @@ class ParseType(object):
         return cls(**kw)
 
     def _to_native(self):
-        return self._value
+        raise NotImplementedError("_to_native must be overridden")
 
 
+@complex_type('Pointer')
 class Pointer(ParseType):
 
     @classmethod
-    def _prevent_circular(cls, parent_class_name, objectData):
-        # TODO this should be replaced with more clever checking, instead of simple class mathching original id should be compared
-        # also circular refs through more object are now ignored, in fact lazy loaded references will be best solution
-        objectData = dict(objectData)
-        # now lets see if we have any references to the parent class here
-        for key, value in objectData.iteritems():
-            if isinstance(value, dict) and "className" in value and value["className"] == parent_class_name:
-                # simply put the reference here as a string  -- not sure what the drawbacks are for this but it works for me
-                objectData[key] = value["objectId"]
-        return objectData
-
-    @classmethod
-    def from_native(cls, parent_class_name=None, **kw):
-        # grab the object data manually here so we can manipulate it before passing back an actual object
+    def from_native(cls, **kw):
+        # create object with only objectId and unloaded flag. it is automatically loaded when any other field is accessed
         klass = Object.factory(kw.get('className'))
-        objectData = klass.GET("/" + kw.get('objectId'))
+        return klass(objectId=kw.get('objectId'), _is_loaded=False)
 
-        # now lets check if we have circular references here
-        if parent_class_name:
-            objectData = cls._prevent_circular(parent_class_name, objectData)
-
-        # set a temporary flag that will remove the recursive pointer types etc
-        klass = Object.factory(kw.get('className'))
-        return klass(**objectData)
 
     def __init__(self, obj):
-
         self._object = obj
 
     def _to_native(self):
@@ -123,24 +95,25 @@ class Pointer(ParseType):
             '__type': 'Pointer',
             'className': self._object.__class__.__name__,
             'objectId': self._object.objectId
-            }
+        }
 
 
+@complex_type('Object')
 class EmbeddedObject(ParseType):
     @classmethod
-    def from_native(cls, parent_class_name=None, **kw):
-        if parent_class_name:
-            kw = Pointer._prevent_circular(parent_class_name, kw)
+    def from_native(cls, **kw):
         klass = Object.factory(kw.get('className'))
         return klass(**kw)
 
 
+@complex_type()
 class Relation(ParseType):
     @classmethod
     def from_native(cls, **kw):
         pass
 
 
+@complex_type()
 class Date(ParseType):
     FORMAT = '%Y-%m-%dT%H:%M:%S.%f%Z'
 
@@ -157,7 +130,7 @@ class Date(ParseType):
         """Can be initialized either with a string or a datetime"""
         if isinstance(date, datetime.datetime):
             self._date = date
-        elif isinstance(date, unicode):
+        elif isinstance(date, six.string_types):
             self._date = Date._from_str(date)
 
     def _to_native(self):
@@ -166,6 +139,7 @@ class Date(ParseType):
             }
 
 
+@complex_type('Bytes')
 class Binary(ParseType):
 
     @classmethod
@@ -180,6 +154,7 @@ class Binary(ParseType):
         return {'__type': 'Bytes', 'base64': self._encoded}
 
 
+@complex_type()
 class GeoPoint(ParseType):
 
     @classmethod
@@ -198,6 +173,7 @@ class GeoPoint(ParseType):
             }
 
 
+@complex_type()
 class File(ParseType):
 
     @classmethod
@@ -232,13 +208,9 @@ class Function(ParseBase):
         return self.POST('/' + self.name, **kwargs)
 
 
-class ParseResource(ParseBase, Pointer):
+class ParseResource(ParseBase):
 
     PROTECTED_ATTRIBUTES = ['objectId', 'createdAt', 'updatedAt']
-
-    @classmethod
-    def retrieve(cls, resource_id):
-        return cls(**cls.GET('/' + resource_id))
 
     @property
     def _editable_attrs(self):
@@ -247,20 +219,23 @@ class ParseResource(ParseBase, Pointer):
         return dict([(k, v) for k, v in self.__dict__.items() if allowed(k)])
 
     def __init__(self, **kw):
+        self.objectId = None
+        self._init_attrs(kw)
 
-        for key, value in kw.items():
-            setattr(self, key, ParseType.convert_from_parse(value, self.__class__.__name__))
+    def __getattr__(self, attr):
+        # if object is not loaded and attribute is missing, try to load it
+        if not self.__dict__.get('_is_loaded', True):
+            del self._is_loaded
+            self._init_attrs(self.GET(self._absolute_url))
+        return object.__getattribute__(self, attr) #preserve default if attr not exists
+
+    def _init_attrs(self, args):
+        for key, value in six.iteritems(args):
+            setattr(self, key, ParseType.convert_from_parse(value))
 
     def _to_native(self):
         return ParseType.convert_to_parse(self)
 
-    def _get_object_id(self):
-        return self.__dict__.get('_object_id')
-
-    def _set_object_id(self, value):
-        if '_object_id' in self.__dict__:
-            raise ValueError('Can not re-set object id')
-        self._object_id = value
 
     def _get_updated_datetime(self):
         return self.__dict__.get('_updated_at') and self._updated_at._date
@@ -294,8 +269,7 @@ class ParseResource(ParseBase, Pointer):
             call_back(response)
 
     def _update(self, batch=False):
-        response = self.__class__.PUT(self._absolute_url, batch=batch,
-                                      **self._to_native())
+        response = self.__class__.PUT(self._absolute_url, batch=batch, **self._to_native())
 
         def call_back(response_dict):
             self.updatedAt = response_dict['updatedAt']
@@ -307,46 +281,48 @@ class ParseResource(ParseBase, Pointer):
 
     def delete(self, batch=False):
         response = self.__class__.DELETE(self._absolute_url, batch=batch)
-        def call_back(response_dict):
-            self.__dict__ = {}
-
         if batch:
-            return response, call_back
-        else:
-            call_back(response)
+            return response, lambda response_dict: None
 
-    _absolute_url = property(
-        lambda self: '/'.join([self.__class__.ENDPOINT_ROOT, self.objectId])
-        )
 
-    objectId = property(_get_object_id, _set_object_id)
+    _absolute_url = property(lambda self: '/'.join([self.__class__.ENDPOINT_ROOT, self.objectId]))
+
     createdAt = property(_get_created_datetime, _set_created_datetime)
     updatedAt = property(_get_updated_datetime, _set_updated_datetime)
 
     def __repr__(self):
-        return '<%s:%s>' % (unicode(self.__class__.__name__), self.objectId)
+        return '<%s:%s>' % (self.__class__.__name__, self.objectId)
 
 
 class ObjectMetaclass(type):
-    def __new__(cls, name, bases, dct):
-        cls = super(ObjectMetaclass, cls).__new__(cls, name, bases, dct)
-        cls.set_endpoint_root()
-        cls.Query = QueryManager(cls)
+    def __new__(mcs, name, bases, dct):
+        cls = super(ObjectMetaclass, mcs).__new__(mcs, name, bases, dct)
+        # attr check must be here because of specific six.with_metaclass implemetantion where metaclass is used also for
+        # internal NewBase which hasn't set_endpoint_root method
+        if hasattr(cls, 'set_endpoint_root'):
+            cls.set_endpoint_root()
+            cls.Query = QueryManager(cls)
         return cls
 
 
-class Object(ParseResource):
-    __metaclass__ = ObjectMetaclass
+class Object(six.with_metaclass(ObjectMetaclass, ParseResource)):
     ENDPOINT_ROOT = '/'.join([API_ROOT, 'classes'])
 
     @classmethod
     def factory(cls, class_name):
-
-        class DerivedClass(cls):
-            pass
-        DerivedClass.__name__ = str(class_name)
-        DerivedClass.set_endpoint_root()
-        return DerivedClass
+        """find proper Object subclass matching class_name
+        system types like _User are mapped to types without underscore (parse_resr.user.User)
+        If user don't declare matching type, class is created on the fly
+        """
+        class_name = str(class_name.lstrip('_'))
+        types = ParseResource.__subclasses__()
+        while types:
+            t = types.pop()
+            if t.__name__ == class_name:
+                return t
+            types.extend(t.__subclasses__())
+        else:
+            return type(class_name, (Object,), {})
 
     @classmethod
     def set_endpoint_root(cls):
@@ -357,15 +333,13 @@ class Object(ParseResource):
 
     @property
     def _absolute_url(self):
-        if not self.objectId: return None
+        if not self.objectId:
+            return None
         return '/'.join([self.__class__.ENDPOINT_ROOT, self.objectId])
 
     @property
     def as_pointer(self):
-        return Pointer(**{
-                'className': self.__class__.__name__,
-                'objectId': self.objectId
-                })
+        return Pointer(self)
 
     def increment(self, key, amount=1):
         """

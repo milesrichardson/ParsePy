@@ -4,20 +4,22 @@
 """
 Contains unit tests for the Python Parse REST API wrapper
 """
+from __future__ import print_function
 
 import os
 import sys
 import subprocess
 import unittest
 import datetime
+import six
+from itertools import chain
 
-
-from core import ResourceRequestNotFound
-from connection import register, ParseBatcher
-from datatypes import GeoPoint, Object, Function
-from user import User
-import query
-from installation import Push
+from parse_rest.core import ResourceRequestNotFound
+from parse_rest.connection import register, ParseBatcher
+from parse_rest.datatypes import GeoPoint, Object, Function
+from parse_rest.user import User
+from parse_rest import query
+from parse_rest.installation import Push
 
 try:
     import settings_local
@@ -25,17 +27,12 @@ except ImportError:
     sys.exit('You must create a settings_local.py file with APPLICATION_ID, ' \
                  'REST_API_KEY, MASTER_KEY variables set')
 
-try:
-    unicode = unicode
-except NameError:
-    # is python3
-    unicode = str
 
 register(
     getattr(settings_local, 'APPLICATION_ID'),
     getattr(settings_local, 'REST_API_KEY'),
     master_key=getattr(settings_local, 'MASTER_KEY')
-    )
+)
 
 GLOBAL_JSON_TEXT = """{
     "applications": {
@@ -76,67 +73,63 @@ class CollectedItem(Object):
 
 class TestObject(unittest.TestCase):
     def setUp(self):
-        self.score = GameScore(
-            score=1337, player_name='John Doe', cheat_mode=False
-            )
-        self.sao_paulo = City(
-            name='São Paulo', location=GeoPoint(-23.5, -46.6167)
-            )
+        self.score = GameScore(score=1337, player_name='John Doe', cheat_mode=False)
+        self.sao_paulo = City(name='São Paulo', location=GeoPoint(-23.5, -46.6167))
 
     def tearDown(self):
         city_name = getattr(self.sao_paulo, 'name', None)
         game_score = getattr(self.score, 'score', None)
         if city_name:
-            for city in City.Query.filter(name=city_name):
-                city.delete()
-
+            ParseBatcher().batch_delete(City.Query.filter(name=city_name))
         if game_score:
-            for score in GameScore.Query.filter(score=game_score):
-                score.delete()
+            ParseBatcher().batch_delete(GameScore.Query.filter(score=game_score))
 
     def testCanInitialize(self):
-        self.assert_(self.score.score == 1337, 'Could not set score')
+        self.assertEqual(self.score.score, 1337, 'Could not set score')
 
     def testCanInstantiateParseType(self):
-        self.assert_(self.sao_paulo.location.latitude == -23.5)
+        self.assertEqual(self.sao_paulo.location.latitude, -23.5)
+
+    def testFactory(self):
+        self.assertEqual(Object.factory('_User'), User)
+        self.assertEqual(Object.factory('GameScore'), GameScore)
 
     def testCanSaveDates(self):
         now = datetime.datetime.now()
         self.score.last_played = now
         self.score.save()
-        self.assert_(self.score.last_played == now, 'Could not save date')
+        self.assertEqual(self.score.last_played, now, 'Could not save date')
 
     def testCanCreateNewObject(self):
         self.score.save()
         object_id = self.score.objectId
 
-        self.assert_(object_id is not None, 'Can not create object')
-        self.assert_(type(object_id) == unicode)
-        self.assert_(type(self.score.createdAt) == datetime.datetime)
-        self.assert_(GameScore.Query.filter(objectId=object_id).exists(),
-                     'Can not create object')
+        self.assertIsNotNone(object_id, 'Can not create object')
+        self.assertIsInstance(object_id, six.string_types)
+        self.assertIsInstance(self.score.createdAt, datetime.datetime)
+        self.assertTrue(GameScore.Query.filter(objectId=object_id).exists(), 'Can not create object')
 
     def testCanUpdateExistingObject(self):
         self.sao_paulo.save()
         self.sao_paulo.country = 'Brazil'
         self.sao_paulo.save()
-        self.assert_(type(self.sao_paulo.updatedAt) == datetime.datetime)
+        self.assertIsInstance(self.sao_paulo.updatedAt, datetime.datetime)
 
         city = City.Query.get(name='São Paulo')
-        self.assert_(city.country == 'Brazil', 'Could not update object')
+        self.assertEqual(city.country, 'Brazil', 'Could not update object')
 
     def testCanDeleteExistingObject(self):
         self.score.save()
         object_id = self.score.objectId
         self.score.delete()
-        self.assert_(not GameScore.Query.filter(objectId=object_id).exists(),
-                     'Failed to delete object %s on Parse ' % self.score)
+        self.assertFalse(GameScore.Query.filter(objectId=object_id).exists(),
+                         'Failed to delete object %s on Parse ' % self.score)
 
     def testCanIncrementField(self):
         previous_score = self.score.score
         self.score.save()
         self.score.increment('score')
-        self.assert_(GameScore.Query.filter(score=previous_score + 1).exists(),
+        self.assertTrue(GameScore.Query.filter(score=previous_score + 1).exists(),
                      'Failed to increment score on backend')
 
     def testAssociatedObject(self):
@@ -149,20 +142,17 @@ class TestObject(unittest.TestCase):
 
         # get the object, see if it has saved
         qs = GameScore.Query.get(objectId=self.score.objectId)
-        self.assert_(isinstance(qs.item, Object),
-                     "Associated CollectedItem is not an object")
-        self.assert_(qs.item.type == "Sword",
-                   "Associated CollectedItem does not have correct attributes")
+        self.assertIsInstance(qs.item, CollectedItem)
+        self.assertEqual(qs.item.type, "Sword", "Associated CollectedItem does not have correct attributes")
 
     def testBatch(self):
         """test saving, updating and deleting objects in batches"""
-        scores = [GameScore(score=s, player_name='Jane', cheat_mode=False)
-                    for s in range(5)]
+        scores = [GameScore(score=s, player_name='Jane', cheat_mode=False) for s in range(5)]
         batcher = ParseBatcher()
         batcher.batch_save(scores)
-        self.assert_(GameScore.Query.filter(player_name='Jane').count() == 5,
+        self.assertEqual(GameScore.Query.filter(player_name='Jane').count(), 5,
                      "batch_save didn't create objects")
-        self.assert_(all(s.objectId is not None for s in scores),
+        self.assertTrue(all(s.objectId is not None for s in scores),
                      "batch_save didn't record object IDs")
 
         # test updating
@@ -172,11 +162,11 @@ class TestObject(unittest.TestCase):
 
         updated_scores = GameScore.Query.filter(player_name='Jane')
         self.assertEqual(sorted([s.score for s in updated_scores]),
-                         range(10, 15), msg="batch_save didn't update objects")
+                         list(range(10, 15)), msg="batch_save didn't update objects")
 
         # test deletion
         batcher.batch_delete(scores)
-        self.assert_(GameScore.Query.filter(player_name='Jane').count() == 0,
+        self.assertEqual(GameScore.Query.filter(player_name='Jane').count(), 0,
                      "batch_delete didn't delete objects")
 
 
@@ -186,72 +176,83 @@ class TestTypes(unittest.TestCase):
         self.score = GameScore(
             score=1337, player_name='John Doe', cheat_mode=False,
             date_of_birth=self.now
-            )
+        )
         self.sao_paulo = City(
             name='São Paulo', location=GeoPoint(-23.5, -46.6167)
-            )
+        )
 
     def testCanConvertToNative(self):
         native_data = self.sao_paulo._to_native()
-        self.assert_(type(native_data) is dict, 'Can not convert object to dict')
+        self.assertIsInstance(native_data, dict, 'Can not convert object to dict')
 
     def testCanConvertNestedLocation(self):
         native_sao_paulo = self.sao_paulo._to_native()
         location_dict = native_sao_paulo.get('location')
 
-        self.assert_(type(location_dict) is dict,
-                     'Expected dict after conversion. Got %s' % location_dict)
-        self.assert_(location_dict.get('latitude') == -23.5,
-                     'Can not serialize geopoint data')
+        self.assertIsInstance(location_dict, dict,
+                              'Expected dict after conversion. Got %s' % location_dict)
+        self.assertEqual(location_dict.get('latitude'), -23.5,
+                         'Can not serialize geopoint data')
 
     def testCanConvertDate(self):
         native_date = self.score._to_native().get('date_of_birth')
-        self.assert_(type(native_date) is dict,
-                     'Could not serialize date into dict')
+        self.assertIsInstance(native_date, dict,
+                              'Could not serialize date into dict')
         iso_date = native_date.get('iso')
         now = '{0}Z'.format(self.now.isoformat()[:-3])
-        self.assert_(iso_date == now, 'Expected %s. Got %s' % (now, iso_date))
+        self.assertEqual(iso_date, now, 'Expected %s. Got %s' % (now, iso_date))
 
 
 class TestQuery(unittest.TestCase):
     """Tests of an object's Queryset"""
-    def setUp(self):
+
+    @classmethod
+    def setUpClass(cls):
         """save a bunch of GameScore objects with varying scores"""
         # first delete any that exist
-        for s in GameScore.Query.all():
-            s.delete()
-        for g in Game.Query.all():
-            g.delete()
+        ParseBatcher().batch_delete(GameScore.Query.all())
+        ParseBatcher().batch_delete(Game.Query.all())
 
-        self.game = Game(title="Candyland")
-        self.game.save()
+        cls.game = Game(title="Candyland")
+        cls.game.save()
 
-        self.scores = [
-            GameScore(score=s, player_name='John Doe', game=self.game)
-                        for s in range(1, 6)]
-        for s in self.scores:
-            s.save()
+        cls.scores = [GameScore(score=s, player_name='John Doe', game=cls.game) for s in range(1, 6)]
+        ParseBatcher().batch_save(cls.scores)
+
+    @classmethod
+    def tearDownClass(cls):
+        '''delete all GameScore and Game objects'''
+        ParseBatcher().batch_delete(chain(cls.scores, [cls.game]))
+
+    def setUp(self):
+        self.test_objects = []
+
+    def tearDown(self):
+        '''delete additional helper objects created in perticular tests'''
+        if self.test_objects:
+            ParseBatcher().batch_delete(self.test_objects)
+            self.test_objects = []
 
     def testExists(self):
         """test the Queryset.exists() method"""
         for s in range(1, 6):
-            self.assert_(GameScore.Query.filter(score=s).exists(),
-                         "exists giving false negative")
-        self.assert_(not GameScore.Query.filter(score=10).exists(),
-                     "exists giving false positive")
+            self.assertTrue(GameScore.Query.filter(score=s).exists(),
+                            "exists giving false negative")
+        self.assertFalse(GameScore.Query.filter(score=10).exists(),
+                         "exists giving false positive")
 
     def testCanFilter(self):
         '''test the Queryset.filter() method'''
         for s in self.scores:
             qobj = GameScore.Query.filter(objectId=s.objectId).get()
-            self.assert_(qobj.objectId == s.objectId,
-                         "Getting object with .filter() failed")
-            self.assert_(qobj.score == s.score,
-                         "Getting object with .filter() failed")
+            self.assertEqual(qobj.objectId, s.objectId,
+                             "Getting object with .filter() failed")
+            self.assertEqual(qobj.score, s.score,
+                             "Getting object with .filter() failed")
 
         # test relational query with other Objects
         num_scores = GameScore.Query.filter(game=self.game).count()
-        self.assert_(num_scores == len(self.scores),
+        self.assertTrue(num_scores == len(self.scores),
                         "Relational query with .filter() failed")
 
     def testGetExceptions(self):
@@ -265,65 +266,78 @@ class TestQuery(unittest.TestCase):
         last_week = datetime.datetime.now() - datetime.timedelta(days=7)
         score = GameScore(name='test', last_played=last_week)
         score.save()
-        self.assert_(GameScore.Query.filter(last_played=last_week).exists(),
-                     'Could not run query with dates')
+        self.test_objects.append(score)
+        self.assertTrue(GameScore.Query.filter(last_played=last_week).exists(), 'Could not run query with dates')
+
 
     def testComparisons(self):
         """test comparison operators- gt, gte, lt, lte, ne"""
-        scores_gt_3 = list(GameScore.Query.filter(score__gt=3))
+        scores_gt_3 = GameScore.Query.filter(score__gt=3)
         self.assertEqual(len(scores_gt_3), 2)
-        self.assert_(all([s.score > 3 for s in scores_gt_3]))
+        self.assertTrue(all([s.score > 3 for s in scores_gt_3]))
 
-        scores_gte_3 = list(GameScore.Query.filter(score__gte=3))
+        scores_gte_3 = GameScore.Query.filter(score__gte=3)
         self.assertEqual(len(scores_gte_3), 3)
-        self.assert_(all([s.score >= 3 for s in scores_gt_3]))
+        self.assertTrue(all([s.score >= 3 for s in scores_gt_3]))
 
-        scores_lt_4 = list(GameScore.Query.filter(score__lt=4))
+        scores_lt_4 = GameScore.Query.filter(score__lt=4)
         self.assertEqual(len(scores_lt_4), 3)
-        self.assert_(all([s.score < 4 for s in scores_lt_4]))
+        self.assertTrue(all([s.score < 4 for s in scores_lt_4]))
 
-        scores_lte_4 = list(GameScore.Query.filter(score__lte=4))
+        scores_lte_4 = GameScore.Query.filter(score__lte=4)
         self.assertEqual(len(scores_lte_4), 4)
-        self.assert_(all([s.score <= 4 for s in scores_lte_4]))
+        self.assertTrue(all([s.score <= 4 for s in scores_lte_4]))
 
-        scores_ne_2 = list(GameScore.Query.filter(score__ne=2))
+        scores_ne_2 = GameScore.Query.filter(score__ne=2)
         self.assertEqual(len(scores_ne_2), 4)
-        self.assert_(all([s.score != 2 for s in scores_ne_2]))
+        self.assertTrue(all([s.score != 2 for s in scores_ne_2]))
 
-        # test chaining
-        lt_4_gt_2 = list(GameScore.Query.filter(score__lt=4).filter(score__gt=2))
-        self.assert_(len(lt_4_gt_2) == 1, 'chained lt+gt not working')
-        self.assert_(lt_4_gt_2[0].score == 3, 'chained lt+gt not working')
+    def testChaining(self):
+        lt_4_gt_2 = GameScore.Query.filter(score__lt=4).filter(score__gt=2)
+        self.assertEqual(len(lt_4_gt_2), 1, 'chained lt+gt not working')
+        self.assertEqual(lt_4_gt_2[0].score, 3, 'chained lt+gt not working')
+
         q = GameScore.Query.filter(score__gt=3, score__lt=3)
-        self.assert_(not q.exists(), "chained lt+gt not working")
+        self.assertFalse(q.exists(), "chained lt+gt not working")
 
-    def testOptions(self):
+        # test original queries are idependent after filting
+        q_all = GameScore.Query.all()
+        q_special = q_all.filter(score__gt=3)
+        self.assertEqual(len(q_all), 5)
+        self.assertEqual(len(q_special), 2)
+
+        q_all = GameScore.Query.all()
+        q_limit = q_all.limit(1)
+        self.assertEqual(len(q_all), 5)
+        self.assertEqual(len(q_limit), 1)
+
+
+    def testOrderBy(self):
         """test three options- order, limit, and skip"""
-        scores_ordered = list(GameScore.Query.all().order_by("score"))
-        self.assertEqual([s.score for s in scores_ordered],
-                         [1, 2, 3, 4, 5])
+        scores_ordered = GameScore.Query.all().order_by("score")
+        self.assertEqual([s.score for s in scores_ordered], [1, 2, 3, 4, 5])
 
-        scores_ordered_desc = list(GameScore.Query.all().order_by("score", descending=True))
-        self.assertEqual([s.score for s in scores_ordered_desc],
-                         [5, 4, 3, 2, 1])
+        scores_ordered_desc = GameScore.Query.all().order_by("score", descending=True)
+        self.assertEqual([s.score for s in scores_ordered_desc], [5, 4, 3, 2, 1])
 
-        scores_limit_3 = list(GameScore.Query.all().limit(3))
-        self.assert_(len(scores_limit_3) == 3, "Limit did not return 3 items")
+    def testLimit(self):
+        q = GameScore.Query.all().limit(3)
+        self.assertEqual(len(q), 3)
 
-        scores_skip_3 = list(GameScore.Query.all().skip(3))
-        self.assert_(len(scores_skip_3) == 2, "Skip did not return 2 items")
+    def testSkip(self):
+        q = GameScore.Query.all().skip(3)
+        self.assertEqual(len(q), 2)
+
+    def testSelectRelated(self):
+        score = GameScore.Query.all().select_related('game').limit(1)[0]
+        self.assertTrue(score.game.objectId)
+        #nice to have - also check no more then one query is triggered
 
     def testCanCompareDateInequality(self):
         today = datetime.datetime.today()
         tomorrow = today + datetime.timedelta(days=1)
-        self.assert_(GameScore.Query.filter(createdAt__lte=tomorrow).count() == 5,
-                     'Could not make inequality comparison with dates')
-
-    def tearDown(self):
-        '''delete all GameScore and Game objects'''
-        for s in GameScore.Query.all():
-            s.delete()
-        self.game.delete()
+        self.assertEqual(GameScore.Query.filter(createdAt__lte=tomorrow).count(), 5,
+                         'Could not make inequality comparison with dates')
 
 
 class TestFunction(unittest.TestCase):
@@ -346,8 +360,7 @@ class TestFunction(unittest.TestCase):
         os.chdir(original_dir)
 
     def tearDown(self):
-        for review in Review.Query.all():
-            review.delete()
+        ParseBatcher().batch_delete(Review.Query.all())
 
     def test_simple_functions(self):
         """test hello world and averageStars functions"""
@@ -407,13 +420,13 @@ class TestUser(unittest.TestCase):
     def testCanSignUp(self):
         self._destroy_user()
         user = User.signup(self.username, self.password)
-        self.assert_(user is not None)
-        self.assert_(user.username == self.username)
+        self.assertIsNotNone(user)
+        self.assertEqual(user.username, self.username)
 
     def testCanLogin(self):
         self._get_user()  # User should be created here.
         user = User.login(self.username, self.password)
-        self.assert_(user.is_authenticated(), 'Login failed')
+        self.assertTrue(user.is_authenticated(), 'Login failed')
 
     def testCanUpdate(self):
         user = self._get_logged_user()
@@ -423,7 +436,7 @@ class TestUser(unittest.TestCase):
         user.phone = phone_number
         user.save()
 
-        self.assert_(User.Query.filter(phone=phone_number).exists(),
+        self.assertTrue(User.Query.filter(phone=phone_number).exists(),
                      'Failed to update user data. New info not on Parse')
 
     def testCanBatchUpdate(self):
@@ -436,10 +449,10 @@ class TestUser(unittest.TestCase):
         batcher = ParseBatcher()
         batcher.batch_save([user])
 
-        self.assert_(User.Query.filter(phone=phone_number).exists(),
-                     'Failed to batch update user data. New info not on Parse')
-        self.assert_(user.updatedAt != original_updatedAt,
-                     'Failed to batch update user data: updatedAt not changed')
+        self.assertTrue(User.Query.filter(phone=phone_number).exists(),
+                        'Failed to batch update user data. New info not on Parse')
+        self.assertNotEqual(user.updatedAt, original_updatedAt,
+                            'Failed to batch update user data: updatedAt not changed')
 
 
 class TestPush(unittest.TestCase):

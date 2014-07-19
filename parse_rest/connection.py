@@ -11,18 +11,13 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-try:
-    from urllib2 import Request, urlopen, HTTPError
-    from urllib import urlencode
-except ImportError:
-    # is Python3
-    from urllib.request import Request, urlopen
-    from urllib.error import HTTPError
-    from urllib.parse import urlencode
+from six.moves.urllib.request import Request, urlopen
+from six.moves.urllib.error import HTTPError
+from six.moves.urllib.parse import urlencode
 
 import json
 
-import core
+from parse_rest import core
 
 API_ROOT = 'https://api.parse.com/1'
 ACCESS_KEYS = {}
@@ -60,8 +55,7 @@ class ParseBase(object):
         command.
         """
         if batch:
-            ret = {"method": http_verb,
-                   "path": uri.split("parse.com")[1]}
+            ret = {"method": http_verb, "path": uri.split("parse.com", 1)[1]}
             if kw:
                 ret["body"] = kw
             return ret
@@ -79,6 +73,8 @@ class ParseBase(object):
         if http_verb == 'GET' and data:
             url += '?%s' % urlencode(kw)
             data = None
+        else:
+            data = data.encode('utf-8')
 
         request = Request(url, data, headers)
         request.add_header('Content-type', 'application/json')
@@ -101,7 +97,7 @@ class ParseBase(object):
                 }.get(e.code, core.ParseError)
             raise exc(e.read())
 
-        return json.loads(response.read())
+        return json.loads(response.read().decode('utf-8'))
 
     @classmethod
     def GET(cls, uri, **kw):
@@ -129,7 +125,11 @@ class ParseBatcher(ParseBase):
         Given a list of create, update or delete methods to call, call all
         of them in a single batch operation.
         """
-        queries, callbacks = zip(*[m(batch=True) for m in methods])
+        methods = list(methods) # methods can be iterator
+        if not methods:
+            #accepts also empty list (or generator) - it allows call batch directly with query result (eventually empty)
+            return
+        queries, callbacks = list(zip(*[m(batch=True) for m in methods]))
         # perform all the operations in one batch
         responses = self.execute("", "POST", requests=queries)
         # perform the callbacks with the response data (updating the existing
@@ -139,8 +139,8 @@ class ParseBatcher(ParseBase):
 
     def batch_save(self, objects):
         """save a list of objects in one operation"""
-        self.batch([o.save for o in objects])
+        self.batch(o.save for o in objects)
 
     def batch_delete(self, objects):
         """delete a list of objects in one operation"""
-        self.batch([o.delete for o in objects])
+        self.batch(o.delete for o in objects)

@@ -12,13 +12,9 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import json
-import collections
 import copy
+import collections
 
-try:
-    unicode = unicode
-except NameError:
-    unicode = str
 
 class QueryResourceDoesNotExist(Exception):
     '''Query returned no results'''
@@ -41,9 +37,8 @@ class QueryManager(object):
         return [klass(**it) for it in klass.GET(uri, **kw).get('results')]
 
     def _count(self, **kw):
-        kw.update({"count": 1, "limit": 0})
-        return self.model_class.GET(self.model_class.ENDPOINT_ROOT,
-                                        **kw).get('count')
+        kw.update({"count": 1})
+        return self.model_class.GET(self.model_class.ENDPOINT_ROOT, **kw).get('count')
 
     def all(self):
         return Queryset(self)
@@ -58,31 +53,15 @@ class QueryManager(object):
         return self.filter(**kw).get()
 
 
-class QuerysetMetaclass(type):
-    """metaclass to add the dynamically generated comparison functions"""
-    def __new__(cls, name, bases, dct):
-        cls = super(QuerysetMetaclass, cls).__new__(cls, name, bases, dct)
-
-        for fname in ['limit', 'skip']:
-            def func(self, value, fname=fname):
-                s = copy.deepcopy(self)
-                s._options[fname] = int(value)
-                return s
-            setattr(cls, fname, func)
-
-        return cls
-
-
 class Queryset(object):
-    __metaclass__ = QuerysetMetaclass
 
     OPERATORS = [
         'lt', 'lte', 'gt', 'gte', 'ne', 'in', 'nin', 'exists', 'select', 'dontSelect', 'all', 'relatedTo'
-        ]
+    ]
 
     @staticmethod
     def convert_to_parse(value):
-        from datatypes import ParseType
+        from parse_rest.datatypes import ParseType
         return ParseType.convert_to_parse(value, as_pointer=True)
 
     @classmethod
@@ -100,11 +79,20 @@ class Queryset(object):
         self._options = {}
         self._result_cache = None
 
+    def __deepcopy__(self, memo):
+        q = self.__class__(self._manager)
+        q._where = copy.deepcopy(self._where, memo)
+        q._options = copy.deepcopy(self._options, memo)
+        q._select_related.extend(self._select_related)
+        return q
+
     def __iter__(self):
         return iter(self._fetch())
 
     def __len__(self):
-        return self._fetch(count=True)
+        #don't use count query for len operator
+        #count doesn't return real size of result in all cases (eg if query contains skip option)
+        return len(self._fetch())
 
     def __getitem__(self, key):
         if isinstance(key, slice):
@@ -112,7 +100,7 @@ class Queryset(object):
         return self._fetch()[key]
 
     def _fetch(self, count=False):
-        if self._result_cache:
+        if self._result_cache is not None:
             return len(self._result_cache) if count else self._result_cache
         """
         Return a list of objects matching query, or if count == True return
@@ -131,33 +119,43 @@ class Queryset(object):
         return self._result_cache
 
     def filter(self, **kw):
+        q = copy.deepcopy(self)
         for name, value in kw.items():
             parse_value = Queryset.convert_to_parse(value)
             attr, operator = Queryset.extract_filter_operator(name)
             if operator is None:
-                self._where[attr] = parse_value
+                q._where[attr] = parse_value
             elif operator == 'relatedTo':
-                self._where['$' + operator] = parse_value
+                q._where['$' + operator] = parse_value
             else:
-                try:
-                    self._where[attr]['$' + operator] = parse_value
-                except TypeError:
-                    # self._where[attr] wasn't settable
-                    raise ValueError("Cannot filter for a constraint " +
-                                "after filtering for a specific value")
-        return self
+                if not isinstance(q._where[attr], dict):
+                    q._where[attr] = {}
+                q._where[attr]['$' + operator] = parse_value
+        return q
+
+    def limit(self, value):
+        q = copy.deepcopy(self)
+        q._options['limit'] = int(value)
+        return q
+
+    def skip(self, value):
+        q = copy.deepcopy(self)
+        q._options['skip'] = int(value)
+        return q
 
     def order_by(self, order, descending=False):
+        q = copy.deepcopy(self)
         # add a minus sign before the order value if descending == True
-        self._options['order'] = descending and ('-' + order) or order
-        return self
+        q._options['order'] = descending and ('-' + order) or order
+        return q
 
     def select_related(self, *fields):
-        self._select_related.extend(fields)
-        return self
+        q = copy.deepcopy(self)
+        q._select_related.extend(fields)
+        return q
 
     def count(self):
-        return len(self)
+        return self._fetch(count=True)
 
     def exists(self):
         return bool(self)
@@ -171,4 +169,4 @@ class Queryset(object):
         return results[0]
 
     def __repr__(self):
-        return unicode(self._fetch())
+        return repr(self._fetch())

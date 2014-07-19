@@ -12,10 +12,10 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-from core import ResourceRequestLoginRequired
-from connection import API_ROOT
-from datatypes import ParseResource, ParseType
-from query import QueryManager
+from parse_rest.core import ResourceRequestLoginRequired
+from parse_rest.connection import API_ROOT
+from parse_rest.datatypes import ParseResource, ParseType
+from parse_rest.query import QueryManager
 
 
 def login_required(func):
@@ -46,7 +46,7 @@ class User(ParseResource):
         if password is not None:
             self = User.login(self.username, password)
 
-        user = User.retrieve(self.objectId)
+        user = User.Query.get(objectId=self.objectId)
         if user.objectId == self.objectId and user.sessionToken == session_token:
             self.sessionToken = session_token
 
