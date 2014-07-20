@@ -16,7 +16,7 @@ from itertools import chain
 
 from parse_rest.core import ResourceRequestNotFound
 from parse_rest.connection import register, ParseBatcher
-from parse_rest.datatypes import GeoPoint, Object, Function
+from parse_rest.datatypes import GeoPoint, Object, Function, Pointer
 from parse_rest.user import User
 from parse_rest import query
 from parse_rest.installation import Push
@@ -168,6 +168,15 @@ class TestObject(unittest.TestCase):
         batcher.batch_delete(scores)
         self.assertEqual(GameScore.Query.filter(player_name='Jane').count(), 0,
                      "batch_delete didn't delete objects")
+
+
+class TestPointer(unittest.TestCase):
+
+    def testToNative(self):
+        ptr = Pointer(GameScore(objectId='xyz'))
+        self.assertEqual(ptr._to_native(), dict(__type='Pointer', className='GameScore', objectId='xyz'))
+        ptr = Pointer(User(objectId='dh56yz', username="dhelmet@spaceballs.com"))
+        self.assertEqual(ptr._to_native(), dict(__type='Pointer', className='_User', objectId='dh56yz'))
 
 
 class TestTypes(unittest.TestCase):

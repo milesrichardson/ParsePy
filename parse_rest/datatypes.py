@@ -40,7 +40,7 @@ class ParseType(object):
         if not is_parse_type:
             return parse_data
 
-        native = ParseType.type_mapping.get(parse_data['__type'])
+        native = ParseType.type_mapping.get(parse_data.pop('__type'))
         return  native.from_native(**parse_data) if native else parse_data
 
     @staticmethod
@@ -93,7 +93,7 @@ class Pointer(ParseType):
     def _to_native(self):
         return {
             '__type': 'Pointer',
-            'className': self._object.__class__.__name__,
+            'className': self._object.className,
             'objectId': self._object.objectId
         }
 
@@ -102,7 +102,7 @@ class Pointer(ParseType):
 class EmbeddedObject(ParseType):
     @classmethod
     def from_native(cls, **kw):
-        klass = Object.factory(kw.get('className'))
+        klass = Object.factory(kw.pop('className'))
         return klass(**kw)
 
 
@@ -284,8 +284,13 @@ class ParseResource(ParseBase):
         if batch:
             return response, lambda response_dict: None
 
+    @property
+    def className(self):
+        return self.__class__.__name__
 
-    _absolute_url = property(lambda self: '/'.join([self.__class__.ENDPOINT_ROOT, self.objectId]))
+    @property
+    def _absolute_url(self):
+        return '%s/%s' % (self.__class__.ENDPOINT_ROOT, self.objectId)
 
     createdAt = property(_get_created_datetime, _set_created_datetime)
     updatedAt = property(_get_updated_datetime, _set_updated_datetime)

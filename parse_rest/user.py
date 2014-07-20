@@ -108,6 +108,10 @@ class User(ParseResource):
         return dict([(k, ParseType.convert_to_parse(v, as_pointer=True))
                      for k, v in self._editable_attrs.items()])
 
+    @property
+    def className(self):
+        return '_User'
+
     def __repr__(self):
         return '<User:%s (Id %s)>' % (self.username, self.objectId)
 
