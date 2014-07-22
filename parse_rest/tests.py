@@ -222,7 +222,7 @@ class TestQuery(unittest.TestCase):
         ParseBatcher().batch_delete(GameScore.Query.all())
         ParseBatcher().batch_delete(Game.Query.all())
 
-        cls.game = Game(title="Candyland")
+        cls.game = Game(title="Candyland", creator=None)
         cls.game.save()
 
         cls.scores = [GameScore(score=s, player_name='John Doe', game=cls.game) for s in range(1, 6)]
@@ -415,6 +415,7 @@ class TestUser(unittest.TestCase):
     def setUp(self):
         self.username = TestUser.USERNAME
         self.password = TestUser.PASSWORD
+        self.game = None
 
         try:
             u = User.login(self.USERNAME, self.PASSWORD)
@@ -425,6 +426,9 @@ class TestUser(unittest.TestCase):
 
     def tearDown(self):
         self._destroy_user()
+        if self.game:
+            self.game.delete()
+            self.game = None
 
     def testCanSignUp(self):
         self._destroy_user()
@@ -462,6 +466,12 @@ class TestUser(unittest.TestCase):
                         'Failed to batch update user data. New info not on Parse')
         self.assertNotEqual(user.updatedAt, original_updatedAt,
                             'Failed to batch update user data: updatedAt not changed')
+
+    def testUserAsQueryArg(self):
+        user = self._get_user()
+        g = self.game = Game(title='G1', creator=user)
+        g.save()
+        self.assertEqual(1, len(Game.Query.filter(creator=user)))
 
 
 class TestPush(unittest.TestCase):

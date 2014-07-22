@@ -45,19 +45,19 @@ class ParseType(object):
 
     @staticmethod
     def convert_to_parse(python_object, as_pointer=False):
-        is_object = isinstance(python_object, Object)
+        is_object = isinstance(python_object, ParseResource) #User is derived from ParseResouce not Object, check against ParseResource
 
         if is_object and not as_pointer:
             return dict([(k, ParseType.convert_to_parse(v, as_pointer=True))
                          for k, v in python_object._editable_attrs.items()
                          ])
 
-        python_type = Object if is_object else type(python_object)
+        python_type = ParseResource if is_object else type(python_object)
 
         # classes that need to be cast to a different type before serialization
         transformation_map = {
             datetime.datetime: Date,
-            Object: Pointer
+            ParseResource: Pointer
         }
 
         if python_type in transformation_map:

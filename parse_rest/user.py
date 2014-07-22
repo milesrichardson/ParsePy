@@ -12,7 +12,7 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-from parse_rest.core import ResourceRequestLoginRequired
+from parse_rest.core import ResourceRequestLoginRequired, ParseError
 from parse_rest.connection import API_ROOT
 from parse_rest.datatypes import ParseResource, ParseType
 from parse_rest.query import QueryManager
@@ -60,8 +60,7 @@ class User(ParseResource):
         url = self._absolute_url
         data = self._to_native()
 
-        response = self.__class__.PUT(url, extra_headers=session_header,
-                                      batch=batch, **data)
+        response = User.PUT(url, extra_headers=session_header, batch=batch, **data)
 
         def call_back(response_dict):
             self.updatedAt = response_dict['updatedAt']
@@ -74,7 +73,7 @@ class User(ParseResource):
     @login_required
     def delete(self):
         session_header = {'X-Parse-Session-Token': self.sessionToken}
-        return self.DELETE(self._absolute_url, extra_headers=session_header)
+        return User.DELETE(self._absolute_url, extra_headers=session_header)
 
     @staticmethod
     def signup(username, password, **kw):
@@ -101,7 +100,7 @@ class User(ParseResource):
         try:
             User.POST(url, email=email)
             return True
-        except:
+        except ParseError:
             return False
 
     def _to_native(self):
@@ -113,7 +112,7 @@ class User(ParseResource):
         return '_User'
 
     def __repr__(self):
-        return '<User:%s (Id %s)>' % (self.username, self.objectId)
+        return '<User:%s (Id %s)>' % (getattr(self, 'username', None), self.objectId)
 
 
 User.Query = QueryManager(User)
