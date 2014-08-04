@@ -23,6 +23,7 @@ API_ROOT = 'https://api.parse.com/1'
 ACCESS_KEYS = {}
 
 
+# Connection can sometimes hang forever on SSL handshake
 CONNECTION_TIMEOUT = 60
 
 def register(app_id, rest_key, **kw):
