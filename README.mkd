@@ -283,6 +283,13 @@ Like Django, Querysets can have constraints added by appending the name of the f
 high_scores = GameScore.Query.filter(score__gte=1000)
 ~~~~~
 
+You can similarly perform queries on GeoPoint objects by using the `nearSphere` operator:
+
+~~~~~ {python}
+my_loc = GeoPoint(latitude=12.0, longitude=-34.55)
+nearby_restaurants = Restaurant.Query.filter(location__nearSphere=my_loc)
+~~~~~
+
 You can see the [full list of constraint operators defined by
 Parse](https://www.parse.com/docs/rest#queries-constraints)
 

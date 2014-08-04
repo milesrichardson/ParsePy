@@ -56,7 +56,7 @@ class QueryManager(object):
 class Queryset(object):
 
     OPERATORS = [
-        'lt', 'lte', 'gt', 'gte', 'ne', 'in', 'nin', 'exists', 'select', 'dontSelect', 'all', 'relatedTo'
+        'lt', 'lte', 'gt', 'gte', 'ne', 'in', 'nin', 'exists', 'select', 'dontSelect', 'all', 'relatedTo', 'nearSphere'
     ]
 
     @staticmethod
