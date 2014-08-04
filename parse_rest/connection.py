@@ -23,6 +23,8 @@ API_ROOT = 'https://api.parse.com/1'
 ACCESS_KEYS = {}
 
 
+CONNECTION_TIMEOUT = 60
+
 def register(app_id, rest_key, **kw):
     global ACCESS_KEYS
     ACCESS_KEYS = {
@@ -87,7 +89,7 @@ class ParseBase(object):
         request.get_method = lambda: http_verb
 
         try:
-            response = urlopen(request)
+            response = urlopen(request, timeout=CONNECTION_TIMEOUT)
         except HTTPError as e:
             exc = {
                 400: core.ResourceRequestBadRequest,
