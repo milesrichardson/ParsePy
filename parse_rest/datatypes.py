@@ -60,6 +60,11 @@ class ParseType(object):
             ParseResource: Pointer
         }
 
+        if hasattr(python_object, '__iter__'):
+            # It's an iterable? Repeat this whole process on each object
+            return [ParseType.convert_to_parse(o, as_pointer=as_pointer)
+                    for o in python_object]
+
         if python_type in transformation_map:
             klass = transformation_map.get(python_type)
             return klass(python_object)._to_native()
