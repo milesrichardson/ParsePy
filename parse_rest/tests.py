@@ -59,6 +59,14 @@ class GameScore(Object):
     pass
 
 
+class GameMap(Object):
+    pass
+
+
+class GameMode(Object):
+    pass
+
+
 class City(Object):
     pass
 
@@ -347,6 +355,32 @@ class TestQuery(unittest.TestCase):
         tomorrow = today + datetime.timedelta(days=1)
         self.assertEqual(GameScore.Query.filter(createdAt__lte=tomorrow).count(), 5,
                          'Could not make inequality comparison with dates')
+
+    def testRelations(self):
+        """Make some maps, make a Game Mode that has many maps, find all maps
+        given a Game Mode"""
+        maps = [GameMap(name="map " + i) for i in ['a', 'b', 'c', 'd']]
+        ParseBatcher().batch_save(maps)
+
+        gm = GameMode(name='test mode')
+        gm.save()
+        gm.addRelation("maps", GameMap.__name__, [m.objectId for m in maps])
+
+        modes = GameMode.Query.all()
+        self.assertEqual(len(modes), 1)
+        mode = modes[0]
+        maps_for_mode = GameMap.Query.filter(maps__relatedTo=mode)
+        self.assertEqual(len(maps_for_mode), 4)
+
+        gm.delete()
+        ParseBatcher().batch_delete(maps)
+
+    def testQueryByRelated(self):
+        game_scores_direct = GameScore.Query.filter(game=self.game)
+        self.assertTrue(len(game_scores_direct) > 0)
+
+        game_scores_in = GameScore.Query.filter(game__in=[self.game])
+        self.assertEqual(len(game_scores_in), len(game_scores_direct))
 
 
 class TestFunction(unittest.TestCase):
