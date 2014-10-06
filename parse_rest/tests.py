@@ -375,6 +375,13 @@ class TestQuery(unittest.TestCase):
         gm.delete()
         ParseBatcher().batch_delete(maps)
 
+    def testQueryByRelated(self):
+        game_scores_direct = GameScore.Query.filter(game=self.game)
+        self.assertTrue(len(game_scores_direct) > 0)
+
+        game_scores_in = GameScore.Query.filter(game__in=[self.game])
+        self.assertEqual(len(game_scores_in), len(game_scores_direct))
+
 
 class TestFunction(unittest.TestCase):
     def setUp(self):
