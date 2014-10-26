@@ -84,8 +84,6 @@ class User(ParseResource):
     @classmethod
     def login(cls, username, passwd):
         login_url = '/'.join([API_ROOT, 'login'])
-        import pdb
-        pdb.set_trace()
         return cls(**User.GET(login_url, username=username, password=passwd))
 
     @classmethod
