@@ -16,12 +16,21 @@ import copy
 import collections
 
 
-class QueryResourceDoesNotExist(Exception):
+class QueryError(Exception):
+    '''Query error base class'''
+
+    def __init__(self, message, status_code=None):
+        super(QueryError, self).__init__(message)
+        if status_code:
+            self.status_code = status_code
+
+
+class QueryResourceDoesNotExist(QueryError):
     '''Query returned no results'''
     pass
 
 
-class QueryResourceMultipleResultsReturned(Exception):
+class QueryResourceMultipleResultsReturned(QueryError):
     '''Query was supposed to return unique result, returned more than one'''
     pass
 
@@ -163,9 +172,15 @@ class Queryset(object):
     def get(self):
         results = self._fetch()
         if len(results) == 0:
-            raise QueryResourceDoesNotExist
+            error_message = 'Query against %s returned no results' % (
+                    self._manager.model_class.ENDPOINT_ROOT)
+            raise QueryResourceDoesNotExist(error_message,
+                                            status_code=404)
         if len(results) >= 2:
-            raise QueryResourceMultipleResultsReturned
+            error_message = 'Query against %s returned multiple results' % (
+                    self._manager.model_class.ENDPOINT_ROOT)
+            raise QueryResourceMultipleResultsReturned(error_message,
+                                                       status_code=404)
         return results[0]
 
     def __repr__(self):
