@@ -12,7 +12,7 @@ parse_rest
   - Cloud code integration
   - Installation querying
   - push
-  - **PLANNED/TODO**: Roles/ACLs**
+  - Roles/ACLs**
   - **PLANNED/TODO**: Image/File type support
 
 
