@@ -50,7 +50,7 @@ class ParseBase(object):
     ENDPOINT_ROOT = API_ROOT
 
     @classmethod
-    def execute(cls, uri, http_verb, extra_headers=None, batch=False, **kw):
+    def execute(cls, uri, http_verb, extra_headers=None, batch=False, body=None, **kw):
         """
         if batch == False, execute a command with the given parameters and
         return the response JSON.
@@ -70,19 +70,25 @@ class ParseBase(object):
         rest_key = ACCESS_KEYS.get('rest_key')
         master_key = ACCESS_KEYS.get('master_key')
 
-        headers = extra_headers or {}
         url = uri if uri.startswith(API_ROOT) else cls.ENDPOINT_ROOT + uri
-        data = kw and json.dumps(kw) or "{}"
+        if body is None:
+            data = kw and json.dumps(kw) or "{}"
+        else:
+            data = body
         if http_verb == 'GET' and data:
             url += '?%s' % urlencode(kw)
             data = None
         else:
             data = data.encode('utf-8')
 
+        headers = {
+            'Content-type': 'application/json',
+            'X-Parse-Application-Id': app_id,
+            'X-Parse-REST-API-Key': rest_key
+        }
+        headers.update(extra_headers or {})
+
         request = Request(url, data, headers)
-        request.add_header('Content-type', 'application/json')
-        request.add_header('X-Parse-Application-Id', app_id)
-        request.add_header('X-Parse-REST-API-Key', rest_key)
 
         if master_key and 'X-Parse-Session-Token' not in headers.keys():
             request.add_header('X-Parse-Master-Key', master_key)
