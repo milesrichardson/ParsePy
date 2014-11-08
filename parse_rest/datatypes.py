@@ -193,10 +193,8 @@ class File(ParseType, ParseBase):
         return cls(**kw)
 
     def __init__(self, name, content=None, mimetype=None, url=None):
-        if isinstance(name, dict):
-            name = name["name"]
         self._name = name
-        self._file_url = None
+        self._file_url = url
         self._api_url = '/'.join([API_ROOT, 'files', name])
         self._content = content
         self._mimetype = mimetype or mimetypes.guess_type(name)
