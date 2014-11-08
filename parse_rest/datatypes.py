@@ -19,6 +19,7 @@ import six
 
 from parse_rest.connection import API_ROOT, ParseBase
 from parse_rest.query import QueryManager
+from parse_rest.core import ParseError
 
 
 def complex_type(name=None):
@@ -214,6 +215,8 @@ class File(ParseType, ParseBase):
         }
 
     def save(self, batch=False):
+        if self.url is not None:
+            raise ParseError("Files can't be overwritten")
         uri = '/'.join([self.__class__.ENDPOINT_ROOT, self.name])
         headers = {'Content-type': self.mimetype}
         response = self.__class__.POST(uri, extra_headers=headers, batch=batch, body=self._content)
