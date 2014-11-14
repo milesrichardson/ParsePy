@@ -67,7 +67,8 @@ class ParseType(object):
             ParseResource: Pointer
         }
 
-        if hasattr(python_object, '__iter__') and not isinstance(python_object, (basestring, ParseType)):
+        if (hasattr(python_object, '__iter__') and
+            not isinstance(python_object, (six.string_types[0], ParseType))):
             # It's an iterable? Repeat this whole process on each object
             return [ParseType.convert_to_parse(o, as_pointer=as_pointer)
                     for o in python_object]
