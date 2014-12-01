@@ -70,7 +70,12 @@ class ParseType(object):
         if (hasattr(python_object, '__iter__') and
             not isinstance(python_object, (six.string_types[0], ParseType))):
             # It's an iterable? Repeat this whole process on each object
-            return [ParseType.convert_to_parse(o, as_pointer=as_pointer)
+            if isinstance(python_object, dict):
+                for key, value in python_object.iteritems():
+                    python_object[key]=ParseType.convert_to_parse(value, as_pointer=as_pointer)
+                return python_object
+            else:
+                return [ParseType.convert_to_parse(o, as_pointer=as_pointer)
                     for o in python_object]
 
         if python_type in transformation_map:
