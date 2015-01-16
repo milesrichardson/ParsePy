@@ -467,4 +467,33 @@ star_func(movie="The Matrix")
 ~~~~~
 
 
+ACLs
+---------------
+The ACL for an object can be updated using the `parse_rest.datatypes.ACL` class. Updating an ACL requires JSON to be passed to ACL. For example, using the User and gameScore examples from above:
+~~~~~ {python}
+from parse_rest.datatypes import ACL
+from parse_rest.user import User
+
+u = User.login('dhelmet', '12345')
+
+gameScore.ACL = ACL({'*': {'read': True}, u.objectId: {'read': True, 'write': True}})
+gameScore.save()
+~~~~~
+
+This updates the gameScore ACL and allows only the user 'dhelmet' to write to gameScore, while allowing 'dhelmet' and the public to read gameScore. Parse uses '*' to denote the public key.
+
+
+Roles
+---------------
+You can create, update or delete roles as well, using the `parse_rest.role.Role` class. Creating a role requires you to pass a name and an ACL to Role.
+~~~~~ {python}
+from parse_rest.role import Role
+
+admin_role = Role(name='moderators')
+admin_role.ACL = ACL({'*': {'read': True}})
+admin_role.save()
+~~~~~
+
+This, for example, creates a role with the name 'moderators', with an ACL that allows the public to read but not write to this role object.
+
 That's it! This is a first try at a Python library for Parse, and is probably not bug-free. If you run into any issues, please get in touch -- dgrtwo@princeton.edu. Thanks!
