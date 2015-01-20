@@ -25,7 +25,7 @@ class Push(ParseResource):
 
     @classmethod
     def _send(cls, data, where=None, **kw):
-        if where:
+        if where != None:
             kw['where'] = where
 
             # allow channels to be specified even if "where" is as well
