@@ -44,8 +44,9 @@ def master_key_required(func):
             raise core.ParseError(message)
         func(obj, *args, **kw)
     return ret
-
-
+# Using this as "default=" argument solve the problem with Datetime object not being JSON serializable
+def date_handler(obj):
+    return obj.isoformat() if hasattr(obj, 'isoformat') else obj
 class ParseBase(object):
     ENDPOINT_ROOT = API_ROOT
 
@@ -72,7 +73,7 @@ class ParseBase(object):
 
         url = uri if uri.startswith(API_ROOT) else cls.ENDPOINT_ROOT + uri
         if body is None:
-            data = kw and json.dumps(kw) or "{}"
+            data = kw and json.dumps(kw, default=date_handler) or "{}"
         else:
             data = body
         if http_verb == 'GET' and data:
