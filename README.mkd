@@ -469,18 +469,22 @@ star_func(movie="The Matrix")
 
 ACLs
 ---------------
-The ACL for an object can be updated using the `parse_rest.datatypes.ACL` class. Updating an ACL requires JSON to be passed to ACL. For example, using the User and gameScore examples from above:
+The ACL for an object can be updated using the `parse_rest.datatypes.ACL` class. This class provides three methods for setting an ACL: set_user, set_role, and set_default. For example, using the User and gameScore examples from above:
 ~~~~~ {python}
 from parse_rest.datatypes import ACL
 from parse_rest.user import User
 
 u = User.login('dhelmet', '12345')
 
-gameScore.ACL = ACL({'*': {'read': True}, u.objectId: {'read': True, 'write': True}})
+gameScore.ACL.set_user(u, read=True, write=True)
+# allows user 'dhelmet' to read and write to gameScore
+gameScore.ACL.set_default(read=True)
+# allows public to read but not write to gameScore
+gameScore.ACL.set_role('moderators', read=True, write=True)
+# allows role 'moderators' to read and write to gameScore. Can alternatively pass the role object instead of the
+# role name. See below for more info on Roles.
 gameScore.save()
 ~~~~~
-
-This updates the gameScore ACL and allows only the user 'dhelmet' to write to gameScore, while allowing 'dhelmet' and the public to read gameScore. Parse uses '*' to denote the public key.
 
 
 Roles
@@ -488,9 +492,10 @@ Roles
 You can create, update or delete roles as well, using the `parse_rest.role.Role` class. Creating a role requires you to pass a name and an ACL to Role.
 ~~~~~ {python}
 from parse_rest.role import Role
+from parse_rest.datatypes import ACL
 
 admin_role = Role(name='moderators')
-admin_role.ACL = ACL({'*': {'read': True}})
+admin_role.ACL.set_default(read=True)
 admin_role.save()
 ~~~~~
 
