@@ -267,9 +267,9 @@ class ACL(ParseType):
 
     def set_role(self, role, read=False, write=False):
         if isinstance(role, ParseResource):
-            self._set_permissions("role:%s" % role.name, read, write)
+            self._set_permission("role:%s" % role.name, read, write)
         else:
-            self._set_permissions("role:%s" % role, read, write)
+            self._set_permission("role:%s" % role, read, write)
 
     def set_user(self, user, read=False, write=False):
         if isinstance(user, ParseResource):
