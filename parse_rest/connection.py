@@ -26,6 +26,7 @@ ACCESS_KEYS = {}
 # Connection can sometimes hang forever on SSL handshake
 CONNECTION_TIMEOUT = 60
 
+
 def register(app_id, rest_key, **kw):
     global ACCESS_KEYS
     ACCESS_KEYS = {
@@ -33,6 +34,18 @@ def register(app_id, rest_key, **kw):
         'rest_key': rest_key
         }
     ACCESS_KEYS.update(**kw)
+
+
+class SessionToken:
+    def __init__(self, token):
+        global ACCESS_KEYS
+        self.token = token
+
+    def __enter__(self):
+        ACCESS_KEYS.update({'session_token': self.token})
+
+    def __exit__(self, type, value, traceback):
+        ACCESS_KEYS['session_token']
 
 
 def master_key_required(func):
@@ -90,6 +103,9 @@ class ParseBase(object):
         headers.update(extra_headers or {})
 
         request = Request(url, data, headers)
+        
+        if ACCESS_KEYS.get('session_token'):
+            request.add_header('X-Parse-Session-Token', ACCESS_KEYS.get('session_token'))
 
         if master_key and 'X-Parse-Session-Token' not in headers.keys():
             request.add_header('X-Parse-Master-Key', master_key)
