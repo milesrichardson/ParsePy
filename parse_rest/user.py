@@ -91,6 +91,11 @@ class User(ParseResource):
         login_url = User.ENDPOINT_ROOT
         return cls(**User.POST(login_url, authData=auth))
 
+    @classmethod
+    def current_user(cls):
+        user_url = '/'.join([API_ROOT, 'users/me'])
+        return cls(**User.GET(user_url))
+
     @staticmethod
     def request_password_reset(email):
         '''Trigger Parse\'s Password Process. Return True/False

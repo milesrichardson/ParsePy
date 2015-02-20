@@ -391,6 +391,26 @@ u.save()
 u.delete()
 ~~~~~
 
+To get the current user from a Parse session:
+
+~~~~~ {python}
+from parse_rest.connection import SessionToken, register
+
+# Acquire a valid parse session somewhere
+# Example: token = request.session.get('session_token')
+
+# Method 1: Using a `with` statement
+# Do this to isolate use of session token in this block only
+with SessionToken(token):
+    me = User.current_user()
+
+# Method 2: register your parse connection with `session_token` parameter
+# Do this to use the session token for all subsequent queries
+register(PARSE_APPID, PARSE_APIKEY, session_token=token)
+me = User.current_user()
+~~~~~
+
+
 Push
 ---------------
 
