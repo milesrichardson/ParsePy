@@ -507,6 +507,21 @@ class TestUser(unittest.TestCase):
         g.save()
         self.assertEqual(1, len(Game.Query.filter(creator=user)))
 
+    def testCanGetCurrentUser(self):
+        user = User.signup(self.username, self.password)
+        self.assertIsNotNone(user.sessionToken)
+
+        register(
+            getattr(settings_local, 'APPLICATION_ID'),
+            getattr(settings_local, 'REST_API_KEY'),
+            session_token=user.sessionToken
+        )
+
+        current_user = User.current_user()
+        self.assertIsNotNone(current_user)
+        self.assertEqual(current_user.sessionToken, user.sessionToken)
+        self.assertEqual(current_user.username, user.username)
+
 
 class TestPush(unittest.TestCase):
     """
