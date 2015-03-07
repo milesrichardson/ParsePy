@@ -390,6 +390,8 @@ class TestFunction(unittest.TestCase):
 
         cloud_function_dir = os.path.join(os.path.split(__file__)[0], 'cloudcode')
         os.chdir(cloud_function_dir)
+        if not os.path.exists("config"):
+            os.makedirs("config")
         # write the config file
         with open("config/global.json", "w") as outf:
             outf.write(GLOBAL_JSON_TEXT % (settings_local.APPLICATION_ID,
