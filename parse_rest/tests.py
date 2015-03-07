@@ -520,6 +520,13 @@ class TestUser(unittest.TestCase):
         )
 
         current_user = User.current_user()
+
+        register(
+            getattr(settings_local, 'APPLICATION_ID'),
+            getattr(settings_local, 'REST_API_KEY'),
+            master_key=getattr(settings_local, 'MASTER_KEY')
+        )
+        
         self.assertIsNotNone(current_user)
         self.assertEqual(current_user.sessionToken, user.sessionToken)
         self.assertEqual(current_user.username, user.username)
