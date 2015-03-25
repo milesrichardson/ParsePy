@@ -255,6 +255,8 @@ class ACL(ParseType):
 
     def __init__(self, acl=None):
         self._acl = acl or {}
+        if acl is None:
+            self.set_default(read=True, write=True)
 
     def _to_native(self):
         return self._acl
@@ -317,6 +319,8 @@ class ParseResource(ParseBase):
     def __init__(self, **kw):
         self.objectId = None
         self._init_attrs(kw)
+        if 'ACL' not in kw:
+            self.ACL = ACL()
 
     def __getattr__(self, attr):
         # if object is not loaded and attribute is missing, try to load it
