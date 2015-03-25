@@ -253,8 +253,8 @@ class ACL(ParseType):
     def from_native(cls, **kw):
         return cls(kw)
 
-    def __init__(self, acl):
-        self._acl = acl
+    def __init__(self, acl=None):
+        self._acl = acl or {}
 
     def _to_native(self):
         return self._acl
