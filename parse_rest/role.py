@@ -13,11 +13,11 @@
 
 
 from parse_rest.connection import API_ROOT
-from parse_rest.datatypes import ParseResource
+from parse_rest.datatypes import Object
 from parse_rest.query import QueryManager
 
 
-class Role(ParseResource):
+class Role(Object):
     '''
     A Role is like a regular Parse object (can be modified and saved) but
     it requires additional methods and functionality
@@ -30,28 +30,10 @@ class Role(ParseResource):
 
     def __repr__(self):
         return '<Role:%s (Id %s)>' % (getattr(self, 'name', None), self.objectId)
-    
-    def removeRelation(self, key, className, objectsId):
-        self.manageRelation('RemoveRelation', key, className, objectsId)
 
-    def addRelation(self, key, className, objectsId):
-        self.manageRelation('AddRelation', key, className, objectsId)
-
-    def manageRelation(self, action, key, className, objectsId):
-        objects = [{
-                    "__type": "Pointer",
-                    "className": className,
-                    "objectId": objectId
-                    } for objectId in objectsId]
-
-        payload = {
-            key: {
-                 "__op": action,
-                 "objects": objects
-                }
-            }
-        self.__class__.PUT(self._absolute_url, **payload)
-        self.__dict__[key] = ''
+    @classmethod
+    def set_endpoint_root(cls):
+        return cls.ENDPOINT_ROOT
 
 
 Role.Query = QueryManager(Role)
