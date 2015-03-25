@@ -57,9 +57,12 @@ def master_key_required(func):
             raise core.ParseError(message)
         func(obj, *args, **kw)
     return ret
+
 # Using this as "default=" argument solve the problem with Datetime object not being JSON serializable
 def date_handler(obj):
     return obj.isoformat() if hasattr(obj, 'isoformat') else obj
+
+
 class ParseBase(object):
     ENDPOINT_ROOT = API_ROOT
 
@@ -140,6 +143,11 @@ class ParseBase(object):
     @classmethod
     def DELETE(cls, uri, **kw):
         return cls.execute(uri, 'DELETE', **kw)
+
+    @classmethod
+    def drop(cls):
+        return cls.POST("%s/schemas/%s" % (API_ROOT, cls.__name__),
+                        _method="DELETE", _ClientVersion="browser")
 
 
 class ParseBatcher(ParseBase):
