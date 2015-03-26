@@ -126,7 +126,22 @@ class GameScore(Object):
     pass
 ~~~~~
 
-And then instantiate it with your parameters:
+You can also create an Object subclass by string name, with the `Object.factory`
+method:
+
+~~~~~ {python}
+from parse_rest.datatypes import Object
+
+myClassName = "GameScore"
+myClass = Object.factory(myClassName)
+
+print myClass
+# <class 'parse_rest.datatypes.GameScore'>
+print myClass.__name__
+# GameScore
+~~~~~
+
+You can then instantiate your new class with some parameters:
 
 ~~~~~ {python}
 gameScore = GameScore(score=1337, player_name='John Doe', cheat_mode=False)
