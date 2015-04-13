@@ -390,6 +390,8 @@ class TestFunction(unittest.TestCase):
 
         cloud_function_dir = os.path.join(os.path.split(__file__)[0], 'cloudcode')
         os.chdir(cloud_function_dir)
+        if not os.path.exists("config"):
+            os.makedirs("config")
         # write the config file
         with open("config/global.json", "w") as outf:
             outf.write(GLOBAL_JSON_TEXT % (settings_local.APPLICATION_ID,
@@ -518,6 +520,13 @@ class TestUser(unittest.TestCase):
         )
 
         current_user = User.current_user()
+
+        register(
+            getattr(settings_local, 'APPLICATION_ID'),
+            getattr(settings_local, 'REST_API_KEY'),
+            master_key=getattr(settings_local, 'MASTER_KEY')
+        )
+        
         self.assertIsNotNone(current_user)
         self.assertEqual(current_user.sessionToken, user.sessionToken)
         self.assertEqual(current_user.username, user.username)
