@@ -169,7 +169,10 @@ class ParseBatcher(ParseBase):
         # perform the callbacks with the response data (updating the existing
         # objets, etc)
         for callback, response in zip(callbacks, responses):
-            callback(response["success"])
+            if "success" in response:
+                callback(response["success"])
+            else:
+                raise core.ParseError(response["error"])
 
     def batch_save(self, objects):
         """save a list of objects in one operation"""
