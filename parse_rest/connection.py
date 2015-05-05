@@ -109,8 +109,7 @@ class ParseBase(object):
         
         if ACCESS_KEYS.get('session_token'):
             request.add_header('X-Parse-Session-Token', ACCESS_KEYS.get('session_token'))
-
-        if master_key and 'X-Parse-Session-Token' not in headers.keys():
+        elif master_key:
             request.add_header('X-Parse-Master-Key', master_key)
 
         request.get_method = lambda: http_verb
