@@ -150,7 +150,6 @@ class TestObject(unittest.TestCase):
         self.assertTrue(GameScore.Query.filter(score=None).exists(),
                      'Failed to remove score on backend')
 
-
     def testAssociatedObject(self):
         """test saving and associating a different object"""
 
