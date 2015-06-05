@@ -143,6 +143,12 @@ class TestObject(unittest.TestCase):
         self.score.increment('score')
         self.assertTrue(GameScore.Query.filter(score=previous_score + 1).exists(),
                      'Failed to increment score on backend')
+                     
+    def testCanRemoveField(self):
+        self.score.save()
+        self.score.remove('score')
+        self.assertTrue(GameScore.Query.filter(score=None).exists(),
+                     'Failed to remove score on backend')
 
     def testAssociatedObject(self):
         """test saving and associating a different object"""
