@@ -67,7 +67,7 @@ class ParseBase(object):
     ENDPOINT_ROOT = API_ROOT
 
     @classmethod
-    def execute(cls, uri, http_verb, extra_headers=None, batch=False, body=None, **kw):
+    def execute(cls, uri, http_verb, extra_headers=None, batch=False, _body=None, **kw):
         """
         if batch == False, execute a command with the given parameters and
         return the response JSON.
@@ -88,10 +88,10 @@ class ParseBase(object):
         master_key = ACCESS_KEYS.get('master_key')
 
         url = uri if uri.startswith(API_ROOT) else cls.ENDPOINT_ROOT + uri
-        if body is None:
+        if _body is None:
             data = kw and json.dumps(kw, default=date_handler) or "{}"
         else:
-            data = body
+            data = _body
         if http_verb == 'GET' and data:
             url += '?%s' % urlencode(kw)
             data = None

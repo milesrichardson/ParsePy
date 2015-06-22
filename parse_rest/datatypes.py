@@ -225,7 +225,7 @@ class File(ParseType, ParseBase):
             raise ParseError("Files can't be overwritten")
         uri = '/'.join([self.__class__.ENDPOINT_ROOT, self.name])
         headers = {'Content-type': self.mimetype}
-        response = self.__class__.POST(uri, extra_headers=headers, batch=batch, body=self._content)
+        response = self.__class__.POST(uri, extra_headers=headers, batch=batch, _body=self._content)
         self._file_url = response['url']
         self._name = response['name']
         self._api_url = '/'.join([API_ROOT, 'files', self._name])
