@@ -173,6 +173,22 @@ class Binary(ParseType):
 
 
 @complex_type()
+class Array(ParseType):
+
+    @classmethod
+    def from_native(cls, **kw):
+        return cls(kw)
+
+    def __init__(self, elements):
+        self._elements = elements
+        self._orig_elements = elements
+
+    def _to_native(self):
+        return self._elements
+
+
+
+@complex_type()
 class GeoPoint(ParseType):
 
     @classmethod
@@ -490,3 +506,31 @@ class Object(six.with_metaclass(ObjectMetaclass, ParseResource)):
             }
         self.__class__.PUT(self._absolute_url, **payload)
         self.__dict__[key] = ''
+
+    def addToArray(self, key, objects):
+        payload = {
+            key: {
+                '__op': 'Add', 'objects': objects
+                }
+            }
+        self.__class__.PUT(self._absolute_url, **payload)
+        self.__dict__[key] = self.__dict__.get(key, []) + objects
+
+    def addUniqueToArray(self, key, objects):
+        payload = {
+            key: {
+                '__op': 'AddUnique', 'objects': objects
+                }
+            }
+        self.__class__.PUT(self._absolute_url, **payload)
+        data = self.__dict__.get(key, [])
+        self.__dict__[key] = data + [x for x in objects if x not in data]
+
+    def removeFromArray(self, key, objects):
+        payload = {
+            key: {
+                '__op': 'Remove', 'objects': objects
+                }
+            }
+        self.__class__.PUT(self._absolute_url, **payload)
+        self.__dict__[key] = [x for x in self.__dict__.get(key, []) if x not in objects]

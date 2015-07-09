@@ -81,7 +81,7 @@ class CollectedItem(Object):
 
 class TestObject(unittest.TestCase):
     def setUp(self):
-        self.score = GameScore(score=1337, player_name='John Doe', cheat_mode=False)
+        self.score = GameScore(score=1337, player_name='John Doe', cheat_mode=False, achievements=['No Miss', 'Ninja'])
         self.sao_paulo = City(name='São Paulo', location=GeoPoint(-23.5, -46.6167))
         self.collected_item = CollectedItem(type="Sword", isAwesome=True)
 
@@ -150,6 +150,24 @@ class TestObject(unittest.TestCase):
         self.assertTrue(GameScore.Query.filter(score=None).exists(),
                      'Failed to remove score on backend')
 
+    def testCanOperateArray(self):
+        self.score.save()
+
+        self.score.addToArray('achievements', ['Ninja Head', 'Thunder', 'Ninja'])
+        correct = ['No Miss', 'Ninja', 'Ninja Head', 'Thunder', 'Ninja']
+        self.assertEqual(self.score.achievements, correct)
+        self.assertEqual(GameScore.Query.get(objectId=self.score.objectId).achievements, correct)
+
+        self.score.removeFromArray('achievements', ['Ninja'])
+        correct = ['No Miss', 'Ninja Head', 'Thunder']
+        self.assertEqual(self.score.achievements, correct)
+        self.assertEqual(GameScore.Query.get(objectId=self.score.objectId).achievements, correct)
+
+        self.score.addUniqueToArray('achievements', ['Ninja Head', 'Hero'])
+        correct = ['No Miss', 'Ninja Head', 'Thunder', 'Hero']
+        self.assertEqual(self.score.achievements, correct)
+        self.assertEqual(GameScore.Query.get(objectId=self.score.objectId).achievements, correct)
+
     def testAssociatedObject(self):
         """test saving and associating a different object"""
 
@@ -201,7 +219,7 @@ class TestTypes(unittest.TestCase):
         self.now = datetime.datetime.now()
         self.score = GameScore(
             score=1337, player_name='John Doe', cheat_mode=False,
-            date_of_birth=self.now
+            date_of_birth=self.now, achievements=['No Miss', 'Ninja']
         )
         self.sao_paulo = City(
             name='São Paulo', location=GeoPoint(-23.5, -46.6167)
@@ -210,6 +228,10 @@ class TestTypes(unittest.TestCase):
     def testCanConvertToNative(self):
         native_data = self.sao_paulo._to_native()
         self.assertIsInstance(native_data, dict, 'Can not convert object to dict')
+
+    def testCanConvertArray(self):
+        native_data = self.score._to_native()
+        self.assertEqual(native_data['achievements'], ['No Miss', 'Ninja'])
 
     def testCanConvertNestedLocation(self):
         native_sao_paulo = self.sao_paulo._to_native()
