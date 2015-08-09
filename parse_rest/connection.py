@@ -45,7 +45,19 @@ class SessionToken:
         ACCESS_KEYS.update({'session_token': self.token})
 
     def __exit__(self, type, value, traceback):
-        ACCESS_KEYS['session_token']
+        del ACCESS_KEYS['session_token']
+
+
+class MasterKey:
+    def __init__(self, master_key):
+        global ACCESS_KEYS
+        self.master_key = master_key
+
+    def __enter__(self):
+        return ACCESS_KEYS.update({'master_key': self.master_key})
+
+    def __exit__(self, type, value, traceback):
+        del ACCESS_KEYS['master_key']
 
 
 def master_key_required(func):
