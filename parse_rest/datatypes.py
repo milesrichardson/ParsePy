@@ -35,6 +35,8 @@ class ParseType(object):
 
     @staticmethod
     def convert_from_parse(parse_key, parse_data):
+        if isinstance(parse_data, list):
+            return [ParseType.convert_from_parse(parse_key, item) for item in parse_data]
 
         parse_type = None
         if isinstance(parse_data, dict):
@@ -455,7 +457,7 @@ class Object(six.with_metaclass(ObjectMetaclass, ParseResource)):
             }
         self.__class__.PUT(self._absolute_url, **payload)
         self.__dict__[key] += amount
-        
+
     def remove(self, key):
         """
         Clear a column value in the object. Note that this happens immediately:

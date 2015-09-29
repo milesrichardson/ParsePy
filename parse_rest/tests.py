@@ -359,6 +359,19 @@ class TestQuery(unittest.TestCase):
         self.assertTrue(score.game.objectId)
         #nice to have - also check no more then one query is triggered
 
+    def testSelectRelatedArray(self):
+        scores = GameScore.Query.all()
+        game = Game.Query.all().limit(1)[0]
+
+        game.score_array = scores
+        game.save() # Saved an array of pointers in the game
+
+        game = Game.Query.filter(objectId=game.objectId).select_related('score_array')[0]
+        for score in game.score_array:
+            self.assertIsInstance(score, GameScore)
+            self.assertEqual(score.player_name, 'John Doe') # This would trigger a GET if select_related were not used.
+        #nice to have - also check no more then one query is triggered
+
     def testCanCompareDateInequality(self):
         today = datetime.datetime.today()
         tomorrow = today + datetime.timedelta(days=1)
