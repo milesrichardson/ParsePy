@@ -558,4 +558,16 @@ with SessionToken(token):
 
 Assuming the CollectedItem 'Sword' is read-protected from the public by an ACL and is readable only by the user, SessionToken allows the user to bypass the ACL and get the 'Sword' item.
 
+Elevating Access to Master
+--------------------------
+Sometimes it is useful to only allow privileged use of the master key for specific uses. 
+
+~~~~~ {python}
+from parse_rest.connection import MasterKey
+
+with MasterKey('master key'):
+    # do privileged calls
+~~~~~
+
+
 That's it! This is a first try at a Python library for Parse, and is probably not bug-free. If you run into any issues, please get in touch -- dgrtwo@princeton.edu. Thanks!

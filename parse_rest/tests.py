@@ -15,7 +15,7 @@ import six
 from itertools import chain
 
 from parse_rest.core import ResourceRequestNotFound
-from parse_rest.connection import register, ParseBatcher
+from parse_rest.connection import register, ParseBatcher, SessionToken, MasterKey
 from parse_rest.datatypes import GeoPoint, Object, Function, Pointer
 from parse_rest.user import User
 from parse_rest import query
@@ -577,6 +577,34 @@ class TestPush(unittest.TestCase):
         Push.alert({"alert": "The Mets scored! The game is now tied 1-1.",
                     "badge": "Increment", "title": "Mets Score"},
                    channels=["Mets"], where={"scores": True})
+
+
+class TestSessionToken(unittest.TestCase):
+    """
+    Test SessionToken class enter and exit.
+    """
+    def get_access_keys(self):
+        from parse_rest.connection import ACCESS_KEYS
+        return ACCESS_KEYS
+
+    def testWithSessionToken(self):
+        with SessionToken(token='asdf'):
+            self.assertIn('session_token', self.get_access_keys())
+        self.assertNotIn('session_token', self.get_access_keys())
+
+
+class TestMasterKey(unittest.TestCase):
+    """
+    Test MasterKey class enter and exit.
+    """
+    def get_access_keys(self):
+        from parse_rest.connection import ACCESS_KEYS
+        return ACCESS_KEYS
+
+    def testWithMasterKey(self):
+        with MasterKey(master_key='asdf'):
+            self.assertIn('master_key', self.get_access_keys() )
+        self.assertNotIn('master_key', self.get_access_keys() )
 
 
 def run_tests():
