@@ -60,7 +60,32 @@ class GameScore(Object):
     pass
 
 
+class TestNoRelation(unittest.TestCase):
+    def setUp(self):
+        try:
+            Game.schema_delete_field('scores')
+        except ResourceRequestBadRequest:
+            # fails if the field doesn't exist
+            pass
+        self.game = Game(name="foobar")
+    
+    def testQueryWithNoRelationOnline(self):
+        """If the online schema lacks the relation, we cannot query."""
+        with self.assertRaises(KeyError):
+            rel = self.game.relation('scores')
+            rel.query()
+
+
 class TestRelation(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        # prime the schema with a relation field for GameScore
+        score1 = GameScore(score=1337, player_name='John Doe', cheat_mode=False)
+        game = Game(name="foobar")
+        game.save()
+        rel = game.relation('scores')
+        rel.add(score1)
+
     def setUp(self):
         self.score1 = GameScore(score=1337, player_name='John Doe', cheat_mode=False)
         self.score2 = GameScore(score=1337, player_name='Jane Doe', cheat_mode=False)
@@ -77,7 +102,11 @@ class TestRelation(unittest.TestCase):
             ParseBatcher().batch_delete(GameScore.Query.filter(score=game_score))
         if game_name:
             ParseBatcher().batch_delete(Game.Query.filter(name=game_name))
-        
+
+    @classmethod
+    def tearDownClass(cls):
+        Game.schema_delete_field('scores')
+
     def testRelationsAdd(self):
         """Add multiple objects to a relation."""
         self.rel.add(self.score1)
@@ -119,12 +148,14 @@ class TestRelation(unittest.TestCase):
         self.assertEqual(fields['scores']['type'], 'Relation')
 
     def testWrongType(self):
-        """You can't add two different classes to a relation."""
-        with self.assertRaises(ResourceRequestBadRequest):
-            self.rel.add(self.score1)
-            self.rel.add(self.game)
+        """Adding wrong type fails silently."""
+        self.rel.add(self.score1)
+        self.rel.add(self.score2)
+        self.rel.add(self.game)  # should fail to add this
+        scores = self.rel.query()
+        self.assertEqual(len(scores), 2)
 
-    def testNoTypeSet(self):
+    def testNoTypeSetParseHasColumn(self):
         """Query can run before anything is added to the relation,
         if the schema online has already defined the relation.
         """
@@ -137,16 +168,16 @@ class TestRelation(unittest.TestCase):
         """
         with self.assertRaises(ParseError):
             rel = self.game.relation("name")
-            bad = rel.query()
-        
-    def testWrongColumnForRelation(self):
+            rel.query()
+
+    def testNonexistentColumnForRelation(self):
         """Should get a ParseError if we specify a relation on
         a column that is not a relation.
         """
         with self.assertRaises(KeyError):
             rel = self.game.relation("nonexistent")
-            bad = rel.query()
-    
+            rel.query()
+
     def testRepr(self):
         s = "*** %s ***" % (self.rel)
         self.assertRegex(s, '<Relation where .+ for .+>')
@@ -157,9 +188,10 @@ class TestRelation(unittest.TestCase):
         retrieved from the server. This test is for code coverage.
         """
         game2 = Game.Query.get(objectId=self.game.objectId)
-        # self.assertTrue(hasattr(game2, 'scores'))
+        self.assertTrue(hasattr(game2, 'scores'))
         rel2 = game2.relation('scores')
-        # self.assertIsInstance(rel2, Relation)
+        self.assertIsInstance(rel2, Relation)
+
 
 def run_tests():
     """Run all tests in the parse_rest package"""
