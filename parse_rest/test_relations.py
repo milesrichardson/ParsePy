@@ -16,6 +16,7 @@ from itertools import chain
 
 from parse_rest.core import ResourceRequestNotFound
 from parse_rest.core import ResourceRequestBadRequest
+from parse_rest.core import ParseError
 from parse_rest.connection import register, ParseBatcher
 from parse_rest.datatypes import GeoPoint, Object, Function, Pointer, Relation
 from parse_rest.user import User
@@ -130,6 +131,35 @@ class TestRelation(unittest.TestCase):
         scores = self.rel.query()
         self.assertEqual(len(scores), 0)
 
+    def testWrongColumnForRelation(self):
+        """Should get a ParseError if we specify a relation on
+        a column that is not a relation.
+        """
+        with self.assertRaises(ParseError):
+            rel = self.game.relation("name")
+            bad = rel.query()
+        
+    def testWrongColumnForRelation(self):
+        """Should get a ParseError if we specify a relation on
+        a column that is not a relation.
+        """
+        with self.assertRaises(KeyError):
+            rel = self.game.relation("nonexistent")
+            bad = rel.query()
+    
+    def testRepr(self):
+        s = "*** %s ***" % (self.rel)
+        self.assertRegex(s, '<Relation where .+ for .+>')
+
+    def testWithParent(self):
+        """Rehydrating a relation from an instance on the server.
+        With_parent is called by relation() when the object was
+        retrieved from the server. This test is for code coverage.
+        """
+        game2 = Game.Query.get(objectId=self.game.objectId)
+        # self.assertTrue(hasattr(game2, 'scores'))
+        rel2 = game2.relation('scores')
+        # self.assertIsInstance(rel2, Relation)
 
 def run_tests():
     """Run all tests in the parse_rest package"""

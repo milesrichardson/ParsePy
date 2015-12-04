@@ -168,9 +168,8 @@ class Relation(ParseType):
 
         # If we're called from from_native, we only know the related class.
         # There is no way to know the parent object at this time, so we return.
-        if 'ClassName' in kw:
+        if 'className' in kw:
             self.relatedClassName = kw['className']
-            return self
 
         # If we're called to create a new Relation, the parentObject must
         # be specified. We also defer creation of the relation until the
@@ -198,9 +197,13 @@ class Relation(ParseType):
         self.parentObject.__dict__[self.key] = self
 
     def __repr__(self):
+        className = objectId = None
+        if self.parentObject is not None:
+            className = self.parentObject.className
+            objectId = self.parentObject.objectId
         repr = u'<Relation where %s:%s for %s>' % \
-            (self.parentObject.className,
-             self.parentObject.objectId,
+            (className,
+             objectId,
              self.relatedClassName)
         return repr
 
@@ -240,8 +243,6 @@ class Relation(ParseType):
             self._probe_for_relation_class()
         key = '%s__relatedTo' % (self.key,)
         kw = {key: self.parentObject}
-        if not hasattr(self, 'relatedClassName'):
-            self._probe_for_relation_class()
         relatedClass = Object.factory(self.relatedClassName)
         q = relatedClass.Query.all().filter(**kw)
         return q
@@ -618,6 +619,9 @@ class Object(six.with_metaclass(ObjectMetaclass, ParseResource)):
 
     def relation(self, key):
         if hasattr(self, key):
-            return getattr(self, key).with_parent(parentObject=self, key=key)
+            try:
+                return getattr(self, key).with_parent(parentObject=self, key=key)
+            except:
+                raise ParseError("Column '%s' is not a Relation." % (key,))
         else:
             return Relation(parentObject=self, key=key)
