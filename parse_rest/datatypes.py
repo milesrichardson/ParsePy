@@ -130,7 +130,121 @@ class EmbeddedObject(ParseType):
 class Relation(ParseType):
     @classmethod
     def from_native(cls, **kw):
-        pass
+        """When rehydrating from native, we know only the className of the
+        destination. kw looks like { 'className': 'SomeClass' }
+        """
+        return cls(**kw)
+
+    def with_parent(self, **kw):
+        """This is called on this object if it's been instantiated via
+        from_native, when it's retrieved from the server.
+        with_parent "completes" the objects, injecting the parentObject and
+        key, so queries can be formed. 
+        """
+        if 'parentObject' in kw:
+            self.parentObject = kw['parentObject']
+            self.key = kw['key']
+        return self
+
+    def __init__(self, **kw):
+        """
+        This constructor can be called either directly, or via from_native.
+        In both cases, the Relation object is incomplete and cannot perform
+        queries until we know the parentObject, key on the parentObject, and
+        the relatedClassName.
+
+        If it's called via from_native, then, a later call to with_parent will
+        complete the Relation.
+
+        If it's called directly, the relatedClassName is discovered either on
+        the first added object, or by probing the server to retrieve an object.
+        """
+        # Name of the key on the parent object.
+        self.key = None
+        # The object of which this Relation is a field.
+        self.parentObject = None
+        # Name of the class with the related objects.
+        self.relatedClassName = None
+
+        # If we're called from from_native, we only know the related class.
+        # There is no way to know the parent object at this time, so we return.
+        if 'ClassName' in kw:
+            self.relatedClassName = kw['className']
+            return self
+
+        # If we're called to create a new Relation, the parentObject must
+        # be specified. We also defer creation of the relation until the
+        # first object is added.
+        if 'parentObject' in kw:
+            self.parentObject = kw['parentObject']
+            self.key = kw['key']
+            self._defer_relation_creation = True
+
+    def _probe_for_relation_class(self):
+        """Retrive the schema from the server to find out the related class.
+        If this fails, there's no way to discover the class, raise an error.
+        """
+        schema = self.parentObject.__class__.schema()
+        fields = schema['fields']
+        relatedColumn = fields[self.key]
+        columnType = relatedColumn['type']
+        if columnType == 'Relation':
+            self.relatedClassName = relatedColumn['targetClass']
+        else:
+            raise ParseError('Column type is %s, expected Relation' % (columnType,))
+
+    def _create_new_relation(self, obj):
+        self.relatedClassName = obj.className
+        self.parentObject.__dict__[self.key] = self
+
+    def __repr__(self):
+        repr = u'<Relation where %s:%s for %s>' % \
+            (self.parentObject.className,
+             self.parentObject.objectId,
+             self.relatedClassName)
+        return repr
+
+    def _to_native(self):
+        return {
+            '__type': 'Relation',
+            'className': self.relatedClassName
+        }
+
+    def add(self, objs):
+        if type(objs) is not list:
+            objs = [objs]
+        if self._defer_relation_creation:
+            self._create_new_relation(objs[0])
+        objectsId = []
+        for obj in objs:
+            if not hasattr(obj, 'objectId') or obj.objectId is None:
+                obj.save()
+            objectsId.append(obj.objectId)
+        self.parentObject.addRelation(self.key,
+                                      self.relatedClassName,
+                                      objectsId)
+
+    def remove(self, objs):
+        if type(objs) is not list:
+            objs = [objs]
+        objectsId = []
+        for obj in objs:
+            if hasattr(obj, 'objectId'):
+                objectsId.append(obj.objectId)
+        self.parentObject.removeRelation(self.key,
+                                         self.relatedClassName,
+                                         objectsId)
+
+    def query(self):
+        if self.relatedClassName is None:
+            self._probe_for_relation_class()
+        key = '%s__relatedTo' % (self.key,)
+        kw = {key: self.parentObject}
+        if not hasattr(self, 'relatedClassName'):
+            self._probe_for_relation_class()
+        relatedClass = Object.factory(self.relatedClassName)
+        q = relatedClass.Query.all().filter(**kw)
+        return q
 
 
 @complex_type()
@@ -434,6 +548,15 @@ class Object(six.with_metaclass(ObjectMetaclass, ParseResource)):
             cls.ENDPOINT_ROOT = root
         return cls.ENDPOINT_ROOT
 
+    @classmethod
+    def schema(cls):
+        """
+        Retrieves the class' schema.
+        """
+        root = '/'.join([API_ROOT, 'schemas', cls.__name__])
+        schema = cls.GET(root)
+        return schema
+
     @property
     def _absolute_url(self):
         if not self.objectId:
@@ -491,4 +614,10 @@ class Object(six.with_metaclass(ObjectMetaclass, ParseResource)):
                 }
             }
         self.__class__.PUT(self._absolute_url, **payload)
-        self.__dict__[key] = ''
+        # self.__dict__[key] = ''
+
+    def relation(self, key):
+        if hasattr(self, key):
+            return getattr(self, key).with_parent(parentObject=self, key=key)
+        else:
+            return Relation(parentObject=self, key=key)
