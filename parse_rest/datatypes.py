@@ -130,30 +130,25 @@ class EmbeddedObject(ParseType):
 class Relation(ParseType):
     @classmethod
     def from_native(cls, **kw):
-        """When rehydrating from native, we know only the className of the
-        destination. kw looks like { 'className': 'SomeClass' }
-        """
         return cls(**kw)
 
     def with_parent(self, **kw):
-        """The parent calls this if the Relation already exists.
-        After the parentObject and key are set, queries can be made.
-        """
+        """The parent calls this if the Relation already exists."""
         if 'parentObject' in kw:
             self.parentObject = kw['parentObject']
             self.key = kw['key']
         return self
 
     def __init__(self, **kw):
-        """
-        Called either via Relation(), or via from_native().
-        In both cases, the Relation object is incomplete,
-        and cannot perform queries.
+        """Called either via Relation(), or via from_native().
+        In both cases, the Relation object cannot perform
+        queries until we know what classes are on both sides
+        of the relation.
 
         If it's called via from_native, then, a later call to
-        with_parent() will complete the Relation.
+        with_parent() provides parent information.
 
-        If it's called directly, the relatedClassName is
+        If it's called as Relation(), the relatedClassName is
         discovered either on the first added object, or
         by probing the server to retrieve an object.
         """
@@ -170,25 +165,6 @@ class Relation(ParseType):
         if 'parentObject' in kw:
             self.parentObject = kw['parentObject']
             self.key = kw['key']
-            # self._defer_relation_creation = True
-
-    def _probe_for_relation_class(self):
-        """Retrive the schema from the server to find related class."""
-        schema = self.parentObject.__class__.schema()
-        fields = schema['fields']
-        relatedColumn = fields[self.key]
-        columnType = relatedColumn['type']
-        if columnType == 'Relation':
-            self.relatedClassName = relatedColumn['targetClass']
-        else:
-            raise ParseError(
-                'Column type is %s, expected Relation' % (columnType,))
-
-    def _create_new_relation(self, obj):
-        self.relatedClassName = obj.className
-        # create the column on the parent
-        setattr(self.parentObject, self.key, self)
-        # self._defer_relation_creation = False
 
     def __repr__(self):
         className = objectId = None
@@ -208,11 +184,13 @@ class Relation(ParseType):
         }
 
     def add(self, objs):
+        """Adds a Parse.Object or an array of Parse.Objects to the relation."""
         if type(objs) is not list:
             objs = [objs]
-        #if self._defer_relation_creation:
         if self.relatedClassName is None:
-            self._create_new_relation(objs[0])
+            # find the related class from the first object added
+            self.relatedClassName = objs[0].className
+            setattr(self.parentObject, self.key, self)
         objectsId = []
         for obj in objs:
             if not hasattr(obj, 'objectId') or obj.objectId is None:
@@ -223,6 +201,7 @@ class Relation(ParseType):
                                       objectsId)
 
     def remove(self, objs):
+        """Removes an array of, or one Parse.Object from this relation."""
         if type(objs) is not list:
             objs = [objs]
         objectsId = []
@@ -234,6 +213,7 @@ class Relation(ParseType):
                                          objectsId)
 
     def query(self):
+        """Returns a Parse.Query limited to objects in this relation."""
         if self.relatedClassName is None:
             self._probe_for_relation_class()
         key = '%s__relatedTo' % (self.key,)
@@ -241,6 +221,18 @@ class Relation(ParseType):
         relatedClass = Object.factory(self.relatedClassName)
         q = relatedClass.Query.all().filter(**kw)
         return q
+
+    def _probe_for_relation_class(self):
+        """Retrive the schema from the server to find related class."""
+        schema = self.parentObject.__class__.schema()
+        fields = schema['fields']
+        relatedColumn = fields[self.key]
+        columnType = relatedColumn['type']
+        if columnType == 'Relation':
+            self.relatedClassName = relatedColumn['targetClass']
+        else:
+            raise ParseError(
+                'Column type is %s, expected Relation' % (columnType,))
 
 
 @complex_type()
