@@ -373,9 +373,12 @@ for post in posts_by_joe:
 Relations
 ---------
 
-You can associate multiple objects to a single object 
-by using a Relation.
-You then query against this subset of objects.
+A Relation is field that contains references to multiple objects.
+You can query this subset of objects.
+
+For example, if we have Game and GameScore classes, and one game
+can have multiple GameScores, you can use relations to associate
+those GameScores with a Game.
 
 ~~~~~ {python}
 game = Game(name="3-way Battle")
@@ -388,7 +391,7 @@ relation.add([score1, score2, score3])
 ~~~~~
 
 A Game gets added, three GameScores get added, and three relations
-are created associating the scores with the game.
+are created associating the GameScores with the Game.
 
 To retreive the related scores for a game, you use query() to get a
 Queryset for the relation.
@@ -399,7 +402,6 @@ for gamescore in scores:
     print gamescore.player_name, gamescore.score
 ~~~~~
 
-The Queryset can be manipulated like any Queryset.
 The query is limited to the objects previously added to the
 relation.
 

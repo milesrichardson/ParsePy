@@ -145,12 +145,12 @@ class Relation(ParseType):
         queries until we know what classes are on both sides
         of the relation.
 
-        If it's called via from_native, then, a later call to
+        If it's called via from_native, then a later call to
         with_parent() provides parent information.
 
         If it's called as Relation(), the relatedClassName is
         discovered either on the first added object, or
-        by probing the server to retrieve an object.
+        by querying the server to retrieve the schema.
         """
         # Name of the key on the parent object.
         self.key = None
