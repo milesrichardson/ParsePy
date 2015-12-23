@@ -376,6 +376,8 @@ Relations
 A Relation is field that contains references to multiple objects.
 You can query this subset of objects.
 
+(Note that Parse's relations are "one sided" and don't involve a join table.  [See the docs.](https://parse.com/docs/js/guide#relations-many-to-many))
+
 For example, if we have Game and GameScore classes, and one game
 can have multiple GameScores, you can use relations to associate
 those GameScores with a Game.
