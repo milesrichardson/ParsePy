@@ -19,7 +19,9 @@ import json
 
 from parse_rest import core
 
-API_ROOT = 'https://api.parse.com/1'
+import os
+API_ROOT=os.environ.get('PARSE_API_ROOT')
+
 ACCESS_KEYS = {}
 
 
@@ -118,7 +120,7 @@ class ParseBase(object):
         headers.update(extra_headers or {})
 
         request = Request(url, data, headers)
-        
+
         if ACCESS_KEYS.get('session_token'):
             request.add_header('X-Parse-Session-Token', ACCESS_KEYS.get('session_token'))
         elif master_key:
