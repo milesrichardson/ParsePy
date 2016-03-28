@@ -189,10 +189,10 @@ class ParseBatcher(ParseBase):
             if "success" in response:
                 callback(response["success"])
             else:
-                batched_errors.append(core.ParseError(response["error"]))
+                batched_errors.append(response["error"])
 
         if batched_errors:
-            raise batched_errors[0]
+            raise core.ParseBatchError(batched_errors)
 
     def batch_save(self, objects):
         """save a list of objects in one operation"""

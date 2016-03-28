@@ -16,6 +16,9 @@ class ParseError(Exception):
     '''Base exceptions from requests made to Parse'''
     pass
 
+class ParseBatchError(Exception):
+    ''' Error in batching operation... should take a list. '''
+    pass
 
 class ResourceRequestBadRequest(ParseError):
     '''Request returns a 400'''
