@@ -13,7 +13,7 @@
 
 from six.moves.urllib.request import Request, urlopen
 from six.moves.urllib.error import HTTPError
-from six.moves.urllib.parse import urlencode
+from six.moves.urllib.parse import urlencode, urlparse
 
 import json
 
@@ -90,7 +90,8 @@ class ParseBase(object):
         command.
         """
         if batch:
-            ret = {"method": http_verb, "path": uri.split("parse.com", 1)[1]}
+            urlsplitter = urlparse(API_ROOT).netloc
+            ret = {"method": http_verb, "path": uri.split(urlsplitter, 1)[1]}
             if kw:
                 ret["body"] = kw
             return ret
@@ -182,11 +183,16 @@ class ParseBatcher(ParseBase):
         responses = self.execute("", "POST", requests=queries)
         # perform the callbacks with the response data (updating the existing
         # objets, etc)
+
+        batched_errors = []
         for callback, response in zip(callbacks, responses):
             if "success" in response:
                 callback(response["success"])
             else:
-                raise core.ParseError(response["error"])
+                batched_errors.append(core.ParseError(response["error"]))
+
+        if batched_errors:
+            raise batched_errors[0]
 
     def batch_save(self, objects):
         """save a list of objects in one operation"""
