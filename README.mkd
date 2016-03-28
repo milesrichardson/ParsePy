@@ -1,3 +1,15 @@
+about the fork
+=========
+
+- Forked from https://github.com/dgrtwo/ParsePy on 3/28 by @milesrichardson
+- upstream seems to be no longer maintained
+- major fixes in fork:
+  - (improvement) Work with self-hosted parse-server
+  - (improvement) Work with self-hosted parse-server and batch_save
+  - (bugfix) batch_save calls response callback on ALL responses, even if some contain errors, and raises ParseBatchError([error1, error2, error3]) with list of all errors encountered during batch operation
+
+(See https://github.com/dgrtwo/ParsePy/pull/138 for PR)
+
 parse_rest
 ==========
 
@@ -560,7 +572,7 @@ Assuming the CollectedItem 'Sword' is read-protected from the public by an ACL a
 
 Elevating Access to Master
 --------------------------
-Sometimes it is useful to only allow privileged use of the master key for specific uses. 
+Sometimes it is useful to only allow privileged use of the master key for specific uses.
 
 ~~~~~ {python}
 from parse_rest.connection import MasterKey
