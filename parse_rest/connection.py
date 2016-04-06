@@ -13,13 +13,16 @@
 
 from six.moves.urllib.request import Request, urlopen
 from six.moves.urllib.error import HTTPError
-from six.moves.urllib.parse import urlencode
+from six.moves.urllib.parse import urlencode, urlparse
 
 import json
 
 from parse_rest import core
 
-API_ROOT = 'https://api.parse.com/1'
+import os
+
+API_ROOT = os.environ.get('PARSE_API_ROOT') or 'https://api.parse.com/1'
+
 ACCESS_KEYS = {}
 
 
@@ -87,7 +90,8 @@ class ParseBase(object):
         command.
         """
         if batch:
-            ret = {"method": http_verb, "path": uri.split("parse.com", 1)[1]}
+            urlsplitter = urlparse(API_ROOT).netloc
+            ret = {"method": http_verb, "path": uri.split(urlsplitter, 1)[1]}
             if kw:
                 ret["body"] = kw
             return ret
@@ -118,7 +122,7 @@ class ParseBase(object):
         headers.update(extra_headers or {})
 
         request = Request(url, data, headers)
-        
+
         if ACCESS_KEYS.get('session_token'):
             request.add_header('X-Parse-Session-Token', ACCESS_KEYS.get('session_token'))
         elif master_key:
@@ -179,11 +183,16 @@ class ParseBatcher(ParseBase):
         responses = self.execute("", "POST", requests=queries)
         # perform the callbacks with the response data (updating the existing
         # objets, etc)
+
+        batched_errors = []
         for callback, response in zip(callbacks, responses):
             if "success" in response:
                 callback(response["success"])
             else:
-                raise core.ParseError(response["error"])
+                batched_errors.append(response["error"])
+
+        if batched_errors:
+            raise core.ParseBatchError(batched_errors)
 
     def batch_save(self, objects):
         """save a list of objects in one operation"""
