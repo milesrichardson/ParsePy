@@ -1,15 +1,3 @@
-about the fork
-=========
-
-- Forked from https://github.com/dgrtwo/ParsePy on 3/28 by @milesrichardson
-- upstream seems to be no longer maintained
-- major fixes in fork:
-  - (improvement) Work with self-hosted parse-server
-  - (improvement) Work with self-hosted parse-server and batch_save
-  - (bugfix) batch_save calls response callback on ALL responses, even if some contain errors, and raises ParseBatchError([error1, error2, error3]) with list of all errors encountered during batch operation
-
-(See https://github.com/dgrtwo/ParsePy/pull/138 for PR)
-
 parse_rest
 ==========
 
