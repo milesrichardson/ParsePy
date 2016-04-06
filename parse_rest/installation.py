@@ -59,7 +59,7 @@ class Push(ParseResource):
 
             # allow channels to be specified even if "where" is as well
             if "channels" in kw:
-                kw['where']["channels"] = kw.pop("channels")
+                kw['where']["channels"] = {"$in": kw.pop("channels")}
 
         return cls.POST('', data=data, **kw)
 
