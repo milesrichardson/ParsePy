@@ -1,3 +1,10 @@
+Note: As of May 13, 2016, this repository (`milesrichardson/ParsePy` is the
+most up-to-date and active python client for the Parse API. It supports self-hosted
+`parse-server` via the REST API. Note that some features will not work with parse-server,
+if they are not supported by the REST API (e.g. push).
+
+See the section below, "using with self-hosted parse-server," for instructions.
+
 parse_rest
 ==========
 
@@ -31,6 +38,35 @@ Note: The version on [PyPI](http://pypi.python.org/pypi) is not
 up-to-date. The code is still under lots of changes and the stability
 of the library API - though improving - is not guaranteed. Please
 file any issues that you may find if documentation/application.
+
+
+Using with self-hosted `parse-server`
+-------------
+
+To use the library with self-hosted parse-server, set the environment variable
+`PARSE_API_ROOT` before importing the module.
+
+Example:
+
+~~~~~ {python}
+import os
+os.environ["PARSE_API_ROOT"] = "http://your_server.com:1337/parse"
+
+# Everything else same as usual
+
+from parse_rest.datatypes import Function, Object, GeoPoint
+from parse_rest.connection import register
+from parse_rest.query import QueryResourceDoesNotExist
+from parse_rest.connection import ParseBatcher
+from parse_rest.core import ResourceRequestBadRequest, ParseError
+
+APPLICATION_ID = '...'
+REST_API_KEY = '...'
+MASTER_KEY = '...'
+
+register(APPLICATION_ID, REST_API_KEY, master_key=MASTER_KEY)
+~~~~~
+
 
 Testing
 -------
