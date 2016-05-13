@@ -1,4 +1,4 @@
-Note: As of May 13, 2016, this repository (`milesrichardson/ParsePy` is the
+Note: As of May 13, 2016, this repository (`milesrichardson/ParsePy)` is the
 most up-to-date and active python client for the Parse API. It supports self-hosted
 `parse-server` via the REST API. Note that some features will not work with parse-server,
 if they are not supported by the REST API (e.g. push).
@@ -32,7 +32,7 @@ Installation
 The easiest way to install this package is by downloading or
 cloning this repository:
 
-    pip install git+https://github.com/dgrtwo/ParsePy.git
+    pip install git+https://github.com/milesrichardson/ParsePy.git
 
 Note: The version on [PyPI](http://pypi.python.org/pypi) is not
 up-to-date. The code is still under lots of changes and the stability
