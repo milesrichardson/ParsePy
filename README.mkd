@@ -293,6 +293,53 @@ You can also mix `save` and `delete` operations in the same query as follows (no
 batcher.batch([score1.save, score2.save, score3.delete])
 ~~~~~
 
+If an error occurs during one or multiple of the operations, it will not affect
+the execution of the remaining operations. Instead, the `batcher.batch_save` or
+`batcher.batch_delete` or `batcher.batch` will raise a `ParseBatchError`
+(child of `ParseError`) exception with `.message` set to a *list* of the errors
+encountered. For example:
+
+~~~~~ {python}
+# Batch save a list of two objects:
+#   dupe_object is a duplicate violating a unique key constraint
+#   dupe_object2 is a duplicate violating a unique key constraint
+#   new_object is a new object satisfying the unique key constraint
+#
+# dupe_object and dupe_object2 will fail to save, and new_object will save successfully
+
+dupe_object = list(MyClass.Query.all().limit(2))[0]
+dupe_object2 = list(MyClass.Query.all().limit(2))[1]
+new_object = MyClass(some_column=11111)
+objects = [dupe_object + new_object]
+
+batcher = ParseBatcher()
+batcher.batch_save(objects)
+~~~~~
+
+will raise an exception:
+
+~~~~~ {python}
+Traceback (most recent call last):
+  File "<console>", line 1, in <module>
+  File "/Users/miles/ParsePy/parse_rest/connection.py", line 199, in batch_save
+    self.batch(o.save for o in objects)
+  File "/Users/miles/ParsePy/parse_rest/connection.py", line 195, in batch
+    raise core.ParseBatchError(batched_errors)
+
+ParseBatchError: [{u'code': 11000, u'error': u'E11000 duplicate key error index: myapp.MyClass.$my_column_1 dup key: { : 555555 }'}, {u'code': 11000, u'error': u'E11000 duplicate key error index: myapp.MyClass.$my_column_1 dup key: { : 44444 }'}]
+~~~~~
+
+And `CRUCIALLY`, the objectId field of the NON-duplicate object will be correctly set:
+
+~~~~~ {python}
+>>> #batch_save as above...
+>>> print objects
+[<MyClass:gOHuhPbGZJ>, <MyClass:None>, <MyClass:None>]
+~~~~~
+
+Therefore, one way to tell which objects saved successfully after a batch save operation
+is to check which objects have `objectId` set.
+
 Querying
 --------
 
