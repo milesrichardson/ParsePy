@@ -568,6 +568,3 @@ from parse_rest.connection import MasterKey
 with MasterKey('master key'):
     # do privileged calls
 ~~~~~
-
-
-That's it! This is a first try at a Python library for Parse, and is probably not bug-free. If you run into any issues, please get in touch -- dgrtwo@princeton.edu. Thanks!

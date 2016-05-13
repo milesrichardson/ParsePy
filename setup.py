@@ -28,8 +28,8 @@ setup(
     packages=['parse_rest'],
     package_data={"parse_rest": [os.path.join("cloudcode", "*", "*")]},
     install_requires=['six'],
-    maintainer='David Robinson',
-    maintainer_email='dgrtwo@princeton.edu',
+    maintainer='Miles Richardson',
+    maintainer_email='miles.richardson@gmail.com',
     cmdclass={'test': TestCommand},
     classifiers=[
         'Development Status :: 4 - Beta',
