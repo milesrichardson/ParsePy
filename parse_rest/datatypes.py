@@ -73,7 +73,7 @@ class ParseType(object):
             not isinstance(python_object, (six.string_types[0], ParseType))):
             # It's an iterable? Repeat this whole process on each object
             if isinstance(python_object, dict):
-                for key, value in python_object.iteritems():
+                for key, value in python_object.items():
                     python_object[key]=ParseType.convert_to_parse(value, as_pointer=as_pointer)
                 return python_object
             else:
