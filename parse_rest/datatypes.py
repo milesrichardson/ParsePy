@@ -305,6 +305,15 @@ class Function(ParseBase):
     def __call__(self, **kwargs):
         return self.POST('/' + self.name, **kwargs)
 
+class Job(ParseBase):
+    ENDPOINT_ROOT = '/'.join((API_ROOT, 'jobs'))
+
+    def __init__(self, name):
+        self.name = name
+
+    def __call__(self, **kwargs):
+        return self.POST('/' + self.name, **kwargs)
+
 
 class ParseResource(ParseBase):
 
