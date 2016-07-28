@@ -453,6 +453,59 @@ for post in posts_by_joe:
 **TODO**: Slicing of Querysets
 
 
+Relations
+---------
+
+A Relation is field that contains references to multiple objects.
+You can query this subset of objects.
+
+(Note that Parse's relations are "one sided" and don't involve a join table.  [See the docs.](https://parse.com/docs/js/guide#relations-many-to-many))
+
+For example, if we have Game and GameScore classes, and one game
+can have multiple GameScores, you can use relations to associate
+those GameScores with a Game.
+
+~~~~~ {python}
+game = Game(name="3-way Battle")
+game.save()
+score1 = GameScore(player_name='Ronald', score=100)
+score2 = GameScore(player_name='Rebecca', score=140)
+score3 = GameScore(player_name='Sara', score=190)
+relation = game.relation('scores')
+relation.add([score1, score2, score3])
+~~~~~
+
+A Game gets added, three GameScores get added, and three relations
+are created associating the GameScores with the Game.
+
+To retreive the related scores for a game, you use query() to get a
+Queryset for the relation.
+
+~~~~~ {python}
+scores = relation.query()
+for gamescore in scores:
+    print gamescore.player_name, gamescore.score
+~~~~~
+
+The query is limited to the objects previously added to the
+relation.
+
+~~~~~ {python}
+scores = relation.query().order_by('score', descending=True)
+for gamescore in scores:
+    print gamescore.player_name, gamescore.score
+~~~~~
+
+To remove objects from a relation, you use remove(). This example
+removes all the related objects.
+
+~~~~~ {python}
+scores = relation.query()
+for gamescore in scores:
+    relation.remove(gamescore)
+~~~~~
+
+
 Users
 -----
 
