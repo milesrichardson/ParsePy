@@ -104,7 +104,7 @@ register your access credentials. You can do so by calling
 `parse_rest.connection.register`.
 
 Before getting to code, a word of caution. You need to consider how your application is
-meant to be deployed. Parse identifies your application though
+meant to be deployed. Parse identifies your application through
 different keys (available from your Parse dashboard) that are used in
 every request done to their servers.
 
@@ -310,7 +310,7 @@ encountered. For example:
 dupe_object = list(MyClass.Query.all().limit(2))[0]
 dupe_object2 = list(MyClass.Query.all().limit(2))[1]
 new_object = MyClass(some_column=11111)
-objects = [dupe_object + new_object]
+objects = [dupe_object, dupe_object2, new_object]
 
 batcher = ParseBatcher()
 batcher.batch_save(objects)
@@ -334,7 +334,7 @@ And `CRUCIALLY`, the objectId field of the NON-duplicate object will be correctl
 ~~~~~ {python}
 >>> #batch_save as above...
 >>> print objects
-[<MyClass:gOHuhPbGZJ>, <MyClass:None>, <MyClass:None>]
+[<MyClass:None>, <MyClass:None>, <MyClass:gOHuhPbGZJ>]
 ~~~~~
 
 Therefore, one way to tell which objects saved successfully after a batch save operation
