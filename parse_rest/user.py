@@ -118,7 +118,7 @@ class User(ParseResource):
 
     def __repr__(self):
         return '<User:%s (Id %s)>' % (getattr(self, 'username', None), self.objectId)
-    
+
     def removeRelation(self, key, className, objectsId):
         self.manageRelation('RemoveRelation', key, className, objectsId)
 
@@ -139,7 +139,19 @@ class User(ParseResource):
                 }
             }
         self.__class__.PUT(self._absolute_url, **payload)
-        self.__dict__[key] = ''
+
+        # Commented this line out to fix the saving relation issue --
+        # it's better to just return None in Relation._to_native
+        # self.__dict__[key] = ''
+
+    def relation(self, key):
+        if not hasattr(self, key):
+            return Relation(parentObject=self, key=key)
+        try:
+            return getattr(self, key).with_parent(parentObject=self, key=key)
+        except:
+            raise ParseError("Column '%s' is not a Relation." % (key,))
+
 
 
 User.Query = QueryManager(User)

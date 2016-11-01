@@ -126,7 +126,7 @@ class EmbeddedObject(ParseType):
         return klass(**kw)
 
 
-@complex_type()
+@complex_type('Relation')
 class Relation(ParseType):
     @classmethod
     def from_native(cls, **kw):
@@ -178,10 +178,9 @@ class Relation(ParseType):
         return repr
 
     def _to_native(self):
-        return {
-            '__type': 'Relation',
-            'className': self.relatedClassName
-        }
+        # Saving relations is a separate operation and thus should never need
+        # to convert this field _to_native
+        return None
 
     def add(self, objs):
         """Adds a Parse.Object or an array of Parse.Objects to the relation."""
