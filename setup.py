@@ -22,9 +22,9 @@ class TestCommand(Command):
 
 setup(
     name='parse_rest',
-    version='0.2.20141004',
+    version='0.2.20170114',
     description='A client library for Parse.com\'.s REST API',
-    url='https://github.com/dgrtwo/ParsePy',
+    url='https://github.com/milesrichardson/ParsePy',
     packages=['parse_rest'],
     package_data={"parse_rest": [os.path.join("cloudcode", "*", "*")]},
     install_requires=['six'],
