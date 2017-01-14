@@ -20,7 +20,7 @@ parse_rest
   - Installation querying
   - push
   - Roles/ACLs**
-  - **PLANNED/TODO**: Image/File type support
+  - Image/File type support (done 1/14/17)
 
 
 ** for applications with access to the MASTER KEY, see details below.
@@ -268,6 +268,40 @@ collectedItem.save() # we have to save it before it can be referenced
 
 gameScore.item = collectedItem
 ~~~~~
+
+
+File Support
+---------------
+
+You can upload files to parse (assuming your `parse-server` instance supports it).
+This has been tested with the default GridStore adapter.
+
+Example:
+
+~~~~~ {python}
+from parse_rest.datatypes import Object, File
+
+class GameScore(Object):
+    pass
+
+# 1. Upload file
+
+with open('/path/to/screenshot.png', 'rb') as fh:
+    rawdata = fh.read()
+
+screenshotFile = File('arbitraryNameOfFile', rawdata, 'image/png')
+screenshotFile.save()
+
+print screenshotFile.url
+
+# 2. Attach file to gamescore object and save
+gs = GameScore.Query.get(objectId='xxxxxxx')
+gs.screenshot = screenshotFile
+gs.save()
+
+print gs.file.url
+~~~~~
+
 
 Batch Operations
 ----------------
