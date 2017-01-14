@@ -337,7 +337,7 @@ class File(ParseType, ParseBase):
             return response, lambda response_dict: None
 
     def delete(self, batch=False):
-        uri = "/".join(self.__class__.ENDPOINT_ROOT, self.name)
+        uri = "/".join([self.__class__.ENDPOINT_ROOT, self.name])
         response = self.__class__.DELETE(uri, batch=batch)
 
         if batch:
