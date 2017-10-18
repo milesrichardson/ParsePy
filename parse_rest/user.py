@@ -75,6 +75,12 @@ class User(ParseResource):
         session_header = {'X-Parse-Session-Token': self.sessionToken}
         return User.DELETE(self._absolute_url, extra_headers=session_header)
 
+    @login_required
+    def logout(self):
+        logout_url = '/'.join([API_ROOT, 'logout'])
+        session_header = {'X-Parse-Session-Token': self.sessionToken}
+        return User.POST(logout_url, extra_headers=session_header)
+    
     @classmethod
     def signup(cls, username, password, **kw):
         response_data = User.POST('', username=username, password=password, **kw)
