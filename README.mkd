@@ -724,6 +724,8 @@ token = u.sessionToken
 with SessionToken(token):
     collectedItem = CollectedItem.Query.get(type="Sword") # Get a collected item, Sword, that is protected by ACL
     print collectedItem
+    
+u.logout()
 ~~~~~
 
 Assuming the CollectedItem 'Sword' is read-protected from the public by an ACL and is readable only by the user, SessionToken allows the user to bypass the ACL and get the 'Sword' item.
