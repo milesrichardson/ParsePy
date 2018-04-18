@@ -9,7 +9,7 @@ parse_rest
 ==========
 
 **parse_rest** is a Python client for the [Parse REST
-  API](https://www.parse.com/docs/rest). It provides:
+  API](http://docs.parseplatform.org/rest/guide). It provides:
 
   - Python object mapping for Parse objects with methods to save,
   update, and delete objects, as well as an interface for querying
@@ -86,7 +86,7 @@ Note Do **not** give the keys of an existing application with data you want to
 keep: create a new one instead. The test suite will erase any existing CloudCode
 in the app and may accidentally replace or change existing objects.
 
-* install the [Parse CloudCode tool](https://www.parse.com/docs/cloud_code_guide)
+* install the [Parse CloudCode tool](http://docs.parseplatform.org/cloudcode/guide/)
 
 You can then test the installation by running the following command:
 
@@ -426,7 +426,7 @@ nearby_restaurants = Restaurant.Query.filter(location__nearSphere=my_loc)
 ~~~~~
 
 You can see the [full list of constraint operators defined by
-Parse](https://www.parse.com/docs/rest#queries-constraints)
+Parse](http://docs.parseplatform.org/rest/guide/#query-constraints)
 
 
 #### Sorting/Ordering
@@ -493,7 +493,7 @@ Relations
 A Relation is field that contains references to multiple objects.
 You can query this subset of objects.
 
-(Note that Parse's relations are "one sided" and don't involve a join table.  [See the docs.](https://parse.com/docs/js/guide#relations-many-to-many))
+(Note that Parse's relations are "one sided" and don't involve a join table.  [See the docs.](http://docs.parseplatform.org/js/guide/#many-to-many))
 
 For example, if we have Game and GameScore classes, and one game
 can have multiple GameScores, you can use relations to associate
@@ -602,7 +602,7 @@ me = User.current_user()
 Push
 ---------------
 
-You can also send notifications to your users using [Parse's Push functionality](https://parse.com/products/push), through the Push object:
+You can also send notifications to your users using [Parse's Push functionality](http://docs.parseplatform.org/rest/guide/#push-notifications), through the Push object:
 
 ~~~~~ {python}
 from parse_rest.installation import Push
@@ -611,7 +611,7 @@ Push.message("The Giants won against the Mets 2-3.",
              channels=["Giants", "Mets"])
 ~~~~~
 
-This will push a message to all users subscribed to the "Giants" and "Mets" channels. Your alert can be restricted based on [Advanced Targeting](https://www.parse.com/docs/push_guide#sending-queries/REST) by specifying the `where` argument:
+This will push a message to all users subscribed to the "Giants" and "Mets" channels. Your alert can be restricted based on [Advanced Targeting](http://docs.parseplatform.org/rest/guide/#sending-pushes-to-queries) by specifying the `where` argument:
 
 ~~~~~ {python}
 Push.message("Willie Hayes injured by own pop fly.",
@@ -633,7 +633,7 @@ Push.alert({"alert": "The Mets scored! The game is now tied 1-1.",
 Cloud Functions
 ---------------
 
-Parse offers [CloudCode](https://www.parse.com/docs/cloud_code_guide), which has the ability to upload JavaScript functions that will be run on the server. You can use the `parse_rest` client to call those functions.
+Parse offers [CloudCode](http://docs.parseplatform.org/rest/guide/#cloud-code), which has the ability to upload JavaScript functions that will be run on the server. You can use the `parse_rest` client to call those functions.
 
 The CloudCode guide describes how to upload a function to the server. Let's say you upload the following `main.js` script:
 
