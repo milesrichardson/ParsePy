@@ -132,6 +132,7 @@ class Queryset(object):
         for name, value in kw.items():
             parse_value = Queryset.convert_to_parse(value)
             attr, operator = Queryset.extract_filter_operator(name)
+            attr = attr.replace("__", ".")
             if operator is None:
                 q._where[attr] = parse_value
             elif operator == 'relatedTo':
@@ -156,7 +157,7 @@ class Queryset(object):
         q = copy.deepcopy(self)
         q._options['keys'] = ','.join(fields)
         return q
-        
+
     def order_by(self, order, descending=False):
         q = copy.deepcopy(self)
         # add a minus sign before the order value if descending == True
